@@ -1,0 +1,21 @@
+<div class="tasks-container">
+    <h2>Tasks</h2>
+    <table class="task-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Description</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (task of tasks; track task.id) {
+          <tr>
+            <td>{{ task.title }}</td>
+            <td>{{ task.description }}</td>
+            <td>{{ task.status }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>

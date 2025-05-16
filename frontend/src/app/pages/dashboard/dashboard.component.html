@@ -1,0 +1,148 @@
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Dashboard</h2>
+    <button class="btn btn-primary" (click)="openAddTaskModal()">
+      <i class="fas fa-plus"></i> Add Task
+    </button>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row mb-4">
+    <div class="col-md-4" *ngFor="let stat of stats">
+      <div class="card {{stat.color}} text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h3 class="card-title mb-0">{{stat.value}}</h3>
+              <p class="card-text small mb-0">{{stat.title}}</p>
+              <div *ngIf="stat.trend" class="mt-2">
+                <i class="fas" [ngClass]="{'fa-arrow-up': stat.trend === 'up', 'fa-arrow-down': stat.trend === 'down'}"></i>
+                <span>{{stat.trendValue}}</span>
+              </div>
+            </div>
+            <div class="text-end">
+              <i class="fas fa-3x" [ngClass]="stat.icon"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tasks Table -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0">Tasks</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Priority</th>
+              <th>Progress</th>
+              <th>Due Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let task of recentTasks">
+              <td>{{task.title}}</td>
+              <td>
+                <span class="badge" [ngClass]="{'bg-primary': task.status === 'pending', 'bg-success': task.status === 'completed', 'bg-warning': task.status === 'in_progress'}">
+                  {{task.status | titlecase}}
+                </span>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="{'bg-danger': task.priority === 'high', 'bg-warning': task.priority === 'medium', 'bg-info': task.priority === 'low'}">
+                  {{task.priority | titlecase}}
+                </span>
+              </td>
+              <td>
+                <div class="progress">
+                  <div class="progress-bar" role="progressbar" 
+                       [style.width.%]="task.progress"
+                       [ngClass]="{'bg-danger': task.progress < 30, 'bg-warning': task.progress < 70, 'bg-success': task.progress >= 70}">
+                    {{task.progress}}%
+                  </div>
+                </div>
+              </td>
+              <td>{{task.dueDate | date:'mediumDate'}}</td>
+              <td>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-success" (click)="updateTaskStatus(task, 'completed')">
+                    <i class="fas fa-check"></i>
+                  </button>
+                  <button class="btn btn-sm btn-warning" (click)="updateTaskStatus(task, 'in_progress')">
+                    <i class="fas fa-play"></i>
+                  </button>
+                  <button class="btn btn-sm btn-danger" (click)="deleteTask(task)">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Task Modal -->
+  <ng-template #addTaskModal>
+    <div class="modal-header">
+      <h5 class="modal-title">Add New Task</h5>
+      <button type="button" class="btn-close" (click)="modalService.dismissAll()"></button>
+    </div>
+    <div class="modal-body">
+      <form (ngSubmit)="createTask()">
+        <div class="mb-3">
+          <label class="form-label">Title *</label>
+          <input type="text" class="form-control" [(ngModel)]="newTask.title" name="title" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea class="form-control" [(ngModel)]="newTask.description" name="description" rows="3"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Status</label>
+          <select class="form-control" [(ngModel)]="newTask.status" name="status">
+            <option *ngFor="let status of statuses" [value]="status">{{status}}</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Priority</label>
+          <select class="form-control" [(ngModel)]="newTask.priority" name="priority">
+            <option *ngFor="let priority of priorities" [value]="priority">{{priority}}</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Assigned To</label>
+          <input type="number" class="form-control" [(ngModel)]="newTask.assigned_to" name="assigned_to">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Project</label>
+          <select class="form-control" [(ngModel)]="newTask.project_id" name="project_id">
+            <option value="0">Select Project</option>
+            <option *ngFor="let project of projects" [value]="project.id">{{project.name}}</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Progress</label>
+          <input type="number" class="form-control" [(ngModel)]="newTask.progress" name="progress" min="0" max="100">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Due Date</label>
+          <input type="date" class="form-control" [(ngModel)]="newTask.dueDate" name="dueDate">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="modalService.dismissAll()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Task</button>
+        </div>
+      </form>
+    </div>
+  </ng-template>
+</div>
