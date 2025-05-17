@@ -33,7 +33,6 @@
         </div>
       </div>
     </div>
-
     <!-- Recent Tasks -->
     <div class="card mb-4">
       <div class="card-header d-flex justify-content-between align-items-center">
@@ -74,68 +73,79 @@
       </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="quick-actions">
-      <h5 class="mb-4">Quick Actions</h5>
-      <div class="row">
-        <div class="col-md-4" *ngFor="let action of quickActions">
-          <div class="action-card">
-            <div class="action-icon">
-              <i class="fas {{action.icon}}"></i>
-            </div>
-            <h6>{{action.title}}</h6>
-            <p>{{action.description}}</p>
-            <button class="btn btn-outline-primary btn-sm w-100" (click)="action.onClick()">{{action.buttonText}}</button>
-          </div>
+   <!-- Quick Actions -->
+   <div class="row mb-4">
+    <div class="col-md-4" *ngFor="let action of quickActions">
+      <div class="action-card" (click)="action.onClick()">
+        <div class="action-icon">
+          <i class="{{action.icon}}"></i>
         </div>
+        <h6>{{action.title}}</h6>
+        <p class="text-muted">{{action.description}}</p>
+        <button class="btn btn-primary w-100">{{action.buttonText}}</button>
       </div>
     </div>
   </div>
 
   <!-- Modals -->
   <ng-template #addTaskModal>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Add New Task</h5>
-        <button type="button" class="btn-close" (click)="dismissModal()"></button>
-      </div>
-      <div class="modal-body">
-        <form [formGroup]="taskForm" (ngSubmit)="onSubmit()">
-          <div class="mb-3">
-            <label class="form-label">Task Name</label>
-            <input type="text" class="form-control" formControlName="title" required>
+    <div class="modal-header">
+      <h5 class="modal-title">Add New Task</h5>
+      <button type="button" class="btn-close" aria-label="Close" (click)="dismissModal()"></button>
+    </div>
+    <div class="modal-body">
+      <form [formGroup]="taskForm" (ngSubmit)="onSubmit()">
+        <div class="mb-3">
+          <label class="form-label" for="taskTitle">Task Name</label>
+          <input type="text" class="form-control" id="taskTitle" formControlName="title" required>
+          <div class="invalid-feedback">
+            Please enter a task name
           </div>
-          <div class="mb-3">
-            <label class="form-label">Project</label>
-            <select class="form-select" formControlName="projectId" required>
-              <option *ngFor="let project of projects" [value]="project.id">
-                {{project.name}}
-              </option>
-            </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="projectId">Project</label>
+          <select class="form-select" id="projectId" formControlName="projectId" required>
+            <option value="" disabled selected>Select a project</option>
+            <option *ngFor="let project of projects" [value]="project.id">
+              {{project.name}}
+            </option>
+          </select>
+          <div class="invalid-feedback">
+            Please select a project
           </div>
-          <div class="mb-3">
-            <label class="form-label">Priority</label>
-            <select class="form-select" formControlName="priority" required>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="priority">Priority</label>
+          <select class="form-select" id="priority" formControlName="priority" required>
+            <option value="" disabled selected>Select priority</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <div class="invalid-feedback">
+            Please select a priority
           </div>
-          <div class="mb-3">
-            <label class="form-label">Due Date</label>
-            <input type="date" class="form-control" formControlName="dueDate" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="dueDate">Due Date</label>
+          <input type="date" class="form-control" id="dueDate" formControlName="dueDate" required>
+          <div class="invalid-feedback">
+            Please select a due date
           </div>
-          <div class="mb-3">
-            <label class="form-label">Description</label>
-            <textarea class="form-control" formControlName="description" rows="3"></textarea>
-          </div>
-          <div class="text-end">
-            <button type="submit" class="btn btn-primary" [disabled]="!taskForm.valid">
-              Create Task
-            </button>
-          </div>
-        </form>
-      </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="description">Description</label>
+          <textarea class="form-control" id="description" formControlName="description" rows="4"></textarea>
+        </div>
+        <div class="text-end">
+          <button type="button" class="btn btn-secondary me-2" (click)="dismissModal()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="!taskForm.valid">
+            Create Task
+          </button>
+        </div>
+      </form>
     </div>
   </ng-template>
 </div>
