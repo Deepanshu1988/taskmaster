@@ -18,6 +18,9 @@ export interface Project {
 })
 export class ProjectService {
   private apiUrl = 'http://localhost:3000/api';
+  updateProject: any;
+  createProject: any;
+  deleteProject: any;
 
   constructor(private http: HttpClient) {}
 

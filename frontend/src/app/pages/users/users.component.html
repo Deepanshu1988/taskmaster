@@ -1,21 +1,198 @@
-<div class="users-container">
-    <h2>Users</h2>
-    <table class="user-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Role</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (user of users; track user.id){
-            <tr>
-            <td>{{ user.name }}</td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.role }}</td>
-          </tr>}
-        
-      </tbody>
-    </table>
+<div class="container-fluid users-container">
+  <!-- Header Section -->
+  <div class="users-header">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="mb-0">Users</h2>
+      <div class="d-flex gap-2">
+        <div class="input-group">
+          <input type="text" class="form-control" placeholder="Search users..." [(ngModel)]="searchQuery">
+          <button class="btn btn-outline-secondary" type="button">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+        <button class="btn btn-primary" (click)="openAddUserModal()">
+          <i class="fas fa-plus"></i> New User
+        </button>
+      </div>
+    </div>
   </div>
+
+  <!-- User Filters -->
+  <div class="user-filters mb-4">
+    <div class="row">
+      <div class="col-md-4">
+        <select class="form-select" [(ngModel)]="selectedRole" (change)="filterUsers()">
+          <option value="">All Roles</option>
+          <option value="admin">Admin</option>
+          <option value="manager">Manager</option>
+          <option value="user">User</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <select class="form-select" [(ngModel)]="selectedDepartment" (change)="filterUsers()">
+          <option value="">All Departments</option>
+          <option *ngFor="let dept of departments" [value]="dept">
+            {{dept}}
+          </option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <select class="form-select" [(ngModel)]="selectedStatus" (change)="filterUsers()">
+          <option value="">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users Grid -->
+  <div class="row g-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Profile</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Department</th>
+                  <th>Status</th>
+                  <th>Tasks</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let user of filteredUsers">
+                  <td>
+                    <div class="avatar-group">
+                      <div class="avatar me-2">
+                        <img [src]="user.avatar" class="rounded-circle" alt="">
+                      </div>
+                      <div class="ms-2">
+                        <span class="badge bg-primary">{{user.role | titlecase}}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <h6 class="mb-0">{{user.username}}</h6>
+                    <small class="text-muted">{{user.position}}</small>
+                  </td>
+                  <td>{{user.email}}</td>
+                  <td>
+                    <span class="badge" 
+      [ngClass]="{
+        'bg-success': user.role === 'admin', 
+        'bg-warning': user.role === 'manager', 
+        'bg-info': user.role === 'user'
+      }">
+  {{user.role | titlecase}}
+</span>
+                  </td>
+                  <td>{{user.department}}</td>
+                  <td>
+                    <span class="badge" [ngClass]="{'bg-success': user.status === 'active', 'bg-danger': user.status === 'inactive'}">
+                      {{user.status | titlecase}}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="me-2">
+                        <i class="fas fa-tasks"></i>
+                      </div>
+                      <span>{{user.assignedTasks}}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="btn-group">
+                      <button class="btn btn-sm btn-outline-primary" (click)="editUser(user)">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-success" (click)="toggleStatus(user)" *ngIf="user.status === 'inactive'">
+                        <i class="fas fa-check"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger" (click)="deleteUser(user)">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit User Modal -->
+  <ng-template #addUserModal>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{editMode ? 'Edit User' : 'Add New User'}}</h5>
+        <button type="button" class="btn-close" (click)="modalService.dismissAll()"></button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-control" formControlName="name" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" formControlName="email" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Role</label>
+                <select class="form-select" formControlName="role" required>
+                  <option value="admin">Admin</option>
+                  <option value="manager">Manager</option>
+                  <option value="user">User</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Department</label>
+                <select class="form-select" formControlName="department" required>
+                  <option *ngFor="let dept of departments" [value]="dept">
+                    {{dept}}
+                  </option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Position</label>
+                <input type="text" class="form-control" formControlName="position" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" formControlName="phone">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Status</label>
+                <select class="form-select" formControlName="status" required>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Profile Picture</label>
+                <input type="file" class="form-control" (change)="onFileSelected($event)">
+              </div>
+            </div>
+          </div>
+          <div class="text-end">
+            <button type="submit" class="btn btn-primary" [disabled]="!userForm.valid">
+              {{editMode ? 'Update User' : 'Create User'}}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </ng-template>
+</div>

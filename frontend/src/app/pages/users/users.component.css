@@ -1,100 +1,239 @@
 .users-container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  min-height: 100vh;
 }
 
 .users-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+  background: white;
+  padding: 1.5rem 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
 }
 
 .users-header h2 {
-  margin: 0;
-  color: #333;
+  color: #2c3e50;
+  font-weight: 700;
+  font-size: 1.8rem;
 }
 
+.user-filters {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
+}
+
+.form-select {
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  padding: 0.75rem;
+  font-weight: 500;
+}
+
+.form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+}
+
+/* User List */
+.user-list {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
+  margin-top: 2rem;
+}
+
+.user-item {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.user-item:hover {
+  background: #f8f9fa;
+}
+
+/* User Avatar */
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 1rem;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* User Info */
+.user-info {
+  flex: 1;
+}
+
+.user-name {
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 0.25rem;
+}
+
+.user-position {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.user-email {
+  color: #475569;
+  font-size: 0.875rem;
+}
+
+/* User Status */
+.user-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-active .status-dot {
+  background-color: #16a34a;
+}
+
+.status-inactive .status-dot {
+  background-color: #dc2626;
+}
+
+/* User Actions */
 .user-actions {
   display: flex;
-  gap: 10px;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
-.user-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-.user-table th {
-  background-color: #f8f9fa;
-  padding: 1rem;
-  text-align: left;
-  font-weight: 600;
-  color: #495057;
-  border-bottom: 2px solid #e9ecef;
-}
-
-.user-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #e9ecef;
-  vertical-align: middle;
-}
-
-.user-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.user-table tbody tr:hover {
-  background-color: #f8f9fa;
-}
-
-.role-badge {
+/* Role Badges */
+.user-role {
   display: inline-block;
-  padding: 0.35em 0.65em;
-  font-size: 0.75em;
-  font-weight: 700;
-  line-height: 1;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: baseline;
-  border-radius: 1rem;
-  text-transform: capitalize;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .role-admin {
-  background-color: #d1e7dd;
-  color: #0f5132;
-}
-
-.role-user {
-  background-color: #e2e3e5;
-  color: #383d41;
+  background-color: #16a34a;
+  color: white;
 }
 
 .role-manager {
-  background-color: #cfe2ff;
-  color: #084298;
+  background-color: #f59e0b;
+  color: white;
 }
 
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background-color: #e9ecef;
+.role-user {
+  background-color: #3b82f6;
+  color: white;
+}
+
+/* User Stats */
+.user-stats {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  color: #495057;
-  text-transform: uppercase;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
-/* Responsive */
+.stat-icon {
+  color: #64748b;
+}
+
+/* User Modal */
+.modal-content {
+  border-radius: 1rem;
+  border: none;
+}
+
+.modal-header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-body {
+  padding: 2rem;
+}
+
+/* Form Layout */
+.user-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #475569;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+}
+
+/* Buttons */
+.btn {
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #5b55e0;
+  border-color: #5b55e0;
+}
+
+.btn-outline-primary {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
   .users-header {
     flex-direction: column;
@@ -102,14 +241,23 @@
     align-items: flex-start;
   }
   
-  .user-actions {
-    width: 100%;
-    justify-content: flex-end;
+  .user-filters {
+    padding: 1rem;
   }
   
-  .user-table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
+  .user-list {
+    margin-top: 1rem;
+  }
+  
+  .user-item {
+    padding: 1rem;
+  }
+  
+  .user-form {
+    grid-template-columns: 1fr;
+  }
+  
+  .user-stats {
+    flex-wrap: wrap;
   }
 }

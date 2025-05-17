@@ -28,6 +28,10 @@ export class UserService {
     return this.http.put<void>(`${this.apiUrl}/${id}`, user, { headers: this.getHeaders() });
   }
 
+  createUser(user: Partial<User>): Observable<User> {
+    return this.http.post<User>(this.apiUrl, user, { headers: this.getHeaders() });
+  }
+
   deleteUser(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`, { headers: this.getHeaders() });
   }

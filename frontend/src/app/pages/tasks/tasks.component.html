@@ -1,21 +1,212 @@
-<div class="tasks-container">
-    <h2>Tasks</h2>
-    <table class="task-table">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Description</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (task of tasks; track task.id) {
-          <tr>
-            <td>{{ task.title }}</td>
-            <td>{{ task.description }}</td>
-            <td>{{ task.status }}</td>
-          </tr>
-        }
-      </tbody>
-    </table>
+<div class="container-fluid tasks-container">
+  <!-- Header Section -->
+  <div class="tasks-header">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="mb-0">Tasks</h2>
+      <div class="d-flex gap-2">
+        <div class="input-group">
+          <input type="text" class="form-control" placeholder="Search tasks..." [(ngModel)]="searchQuery">
+          <button class="btn btn-outline-secondary" type="button">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+        <button class="btn btn-primary" (click)="openAddTaskModal()">
+          <i class="fas fa-plus"></i> New Task
+        </button>
+      </div>
+    </div>
   </div>
+
+  <!-- Task Filters -->
+  <div class="task-filters mb-4">
+    <div class="row">
+      <div class="col-md-3">
+        <select class="form-select" [(ngModel)]="selectedStatus" (change)="filterTasks()">
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="in-progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select class="form-select" [(ngModel)]="selectedPriority" (change)="filterTasks()">
+          <option value="">All Priorities</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select class="form-select" [(ngModel)]="selectedProject" (change)="filterTasks()">
+          <option value="">All Projects</option>
+          <option *ngFor="let project of projects" [value]="project.id">
+            {{project.name}}
+          </option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select class="form-select" [(ngModel)]="selectedAssignee" (change)="filterTasks()">
+          <option value="">All Assignees</option>
+          <option *ngFor="let user of users" [value]="user.id">
+            {{user.username}}
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Task List -->
+  <div class="row g-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Project</th>
+                  <th>Assignee</th>
+                  <th>Status</th>
+                  <th>Priority</th>
+                  <th>Due Date</th>
+                  <th>Progress</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let task of filteredTasks">
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="task-icon">
+                        <i class="fas fa-tasks"></i>
+                      </div>
+                      <div class="ms-3">
+                        <h6 class="mb-0">{{task.title}}</h6>
+                        <small class="text-muted">{{task.description}}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{task.project?.name}}</td>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="avatar me-2">
+                        <img [src]="task.assignee?.avatar" class="rounded-circle" alt="">
+                      </div>
+                      <span>{{task.assignee?.username}}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge" 
+      [ngClass]="{
+        'bg-success': task.status === 'completed', 
+        'bg-warning': task.status === 'in_progress',  
+        'bg-info': task.status === 'pending'
+      }">
+  {{task.status | titlecase}}
+</span>
+                  </td>
+                  <td>
+                    <span class="badge" [ngClass]="{'bg-danger': task.priority === 'high', 'bg-warning': task.priority === 'medium', 'bg-success': task.priority === 'low'}">
+                      {{task.priority | titlecase}}
+                    </span>
+                  </td>
+                  <td>{{task.dueDate | date}}</td>
+                  <td>
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar" role="progressbar" 
+                           [style.width.%]="task.progress"
+                           [ngClass]="{'bg-danger': task.progress < 30, 'bg-warning': task.progress < 70, 'bg-success': task.progress >= 70}">
+                        {{task.progress}}%
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="btn-group">
+                      <button class="btn btn-sm btn-outline-primary" (click)="editTask(task)">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-success" (click)="updateStatus(task, 'completed')" *ngIf="task.status !== 'completed'">
+                        <i class="fas fa-check"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger" (click)="deleteTask(task)">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Task Modal -->
+  <ng-template #addTaskModal>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{editMode ? 'Edit Task' : 'Add New Task'}}</h5>
+        <button type="button" class="btn-close" (click)="dismissModal()"></button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="taskForm" (ngSubmit)="onSubmit()">
+          <div class="mb-3">
+            <label class="form-label">Task Name</label>
+            <input type="text" class="form-control" formControlName="name" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" formControlName="description" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Project</label>
+            <select class="form-select" formControlName="projectId" required>
+              <option *ngFor="let project of projects" [value]="project.id">
+                {{project.name}}
+              </option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Assignee</label>
+            <select class="form-select" formControlName="assigneeId" required>
+              <option *ngFor="let user of users" [value]="user.id">
+                {{user.username}}
+              </option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Priority</label>
+            <select class="form-select" formControlName="priority" required>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Status</label>
+            <select class="form-select" formControlName="status" required>
+              <option value="pending">Pending</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Due Date</label>
+            <input type="date" class="form-control" formControlName="dueDate" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Progress</label>
+            <input type="number" class="form-control" formControlName="progress" min="0" max="100" required>
+          </div>
+          <div class="text-end">
+            <button type="submit" class="btn btn-primary" [disabled]="!taskForm.valid">
+              {{editMode ? 'Update Task' : 'Create Task'}}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </ng-template>
+</div>

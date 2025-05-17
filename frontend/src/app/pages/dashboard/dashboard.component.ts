@@ -1,14 +1,14 @@
-import { Component, ViewChild, ElementRef } from '@angular/core';
+import { Component, ViewChild, ElementRef, OnInit } from '@angular/core';
 import { CommonModule, NgClass } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TaskService } from '../../services/task.service';
 import { AuthService } from '../../services/auth.service';
 import { Task } from '../../models/task.model';
 import { ProjectService } from '../../services/project.service';
 import { Project } from '../../models/project.model'; // Import Project model
-
+import { firstValueFrom } from 'rxjs';
 interface StatCard {
   title: string;
   value: string;
@@ -18,24 +18,73 @@ interface StatCard {
   trendValue?: string;
 }
 
+// Add this interface right after your imports and before the component class
+interface TaskWithProject extends Task {
+  project?: Project;
+}
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, NgClass, FormsModule],
+  imports: [
+    CommonModule,
+    RouterModule,
+    NgClass,
+    FormsModule,
+    ReactiveFormsModule
+  ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
   @ViewChild('addTaskModal') addTaskModal!: ElementRef;
-  
-  tasks: Task[] = [];
-  recentTasks: Task[] = [];
+  @ViewChild('addProjectModal') addProjectModal!: ElementRef;
+
+  // Update these arrays to use TaskWithProject type
+  tasks: TaskWithProject[] = [];
+  recentTasks: TaskWithProject[] = [];
+  projects: Project[] = [];
+  filteredTasks: Task[] = [];
   stats: StatCard[] = [
     { title: 'Total Tasks', value: '0', color: 'bg-primary', icon: 'fa-tasks' },
     { title: 'Completed', value: '0', color: 'bg-success', icon: 'fa-check-circle' },
     { title: 'In Progress', value: '0', color: 'bg-warning', icon: 'fa-spinner' }
   ];
-  
+
+  // Quick Actions with all required properties
+  quickActions: {
+    icon: string;
+    title: string;
+    description: string;
+    buttonText: string;
+    onClick: () => void;
+  }[] = [
+    {
+      icon: 'fas fa-plus',
+      title: 'Add Task',
+      description: 'Create a new task',
+      buttonText: 'Add Task',
+      onClick: () => this.openAddTaskModal()
+    },
+    {
+      icon: 'fas fa-project-diagram',
+      title: 'Add Project',
+      description: 'Create a new project',
+      buttonText: 'Add Project',
+      onClick: () => this.openAddProjectModal()
+    },
+    {
+      icon: 'fas fa-user-plus',
+      title: 'Add User',
+      description: 'Create a new user',
+      buttonText: 'Add User',
+      onClick: () => this.openAddUserModal()
+    }
+  ];
+
+  // Task form properties
+  taskForm!: any;
+  editMode = false;
+  selectedTask: Task | null = null;
   newTask: Task = {
     id: 0,
     title: '',
@@ -48,25 +97,62 @@ export class DashboardComponent {
     created_at: new Date().toISOString()
   };
 
+  // Project form properties
+  projectForm!: any;
+  editProjectMode = false;
+  selectedProject: Project | null = null;
+
   priorities = ['high', 'medium', 'low'];
   statuses = ['pending', 'in_progress', 'completed'];
-  projects: Project[] = []; // Initialize with empty array
 
   constructor(
+    private fb: FormBuilder,
+    private modalService: NgbModal,
     private taskService: TaskService,
+    private projectService: ProjectService,
     private authService: AuthService,
-    private router: Router,
-    public modalService: NgbModal,
-    private projectService: ProjectService
+    private router: Router
   ) {
-    this.loadTasks();
+    // Initialize forms
+    this.taskForm = {
+      title: ['', Validators.required],
+      description: ['', Validators.required],
+      project_id: ['', Validators.required],
+      assigned_to: ['', Validators.required],
+      priority: ['', Validators.required],
+      status: ['', Validators.required],
+      dueDate: ['', Validators.required],
+      progress: ['', Validators.required]
+    };
+  
+    this.projectForm = {
+      name: ['', Validators.required],
+      description: ['', Validators.required],
+      status: ['', Validators.required]
+    };
+  }
+
+  ngOnInit(): void {
+    // Load data
     this.loadProjects();
   }
 
   async loadTasks() {
     try {
-      this.tasks = await this.taskService.getTasks().toPromise() || [];
-      this.recentTasks = this.tasks.filter(task => ['pending', 'in_progress'].includes(task.status));
+      const tasks = await firstValueFrom(this.taskService.getTasks());
+      this.tasks = tasks;
+      this.recentTasks = this.tasks.slice(0, 5);
+      
+      // Map project names to tasks
+      for (const task of this.tasks) {
+        if (task.project_id) {
+          const project = this.projects.find(p => p.id === task.project_id);
+          if (project) {
+            task['project'] = project;
+          }
+        }
+      }
+      
       this.updateStats();
     } catch (error) {
       console.error('Error loading tasks:', error);
@@ -75,11 +161,12 @@ export class DashboardComponent {
 
   async loadProjects() {
     try {
-      const projects = await this.projectService.getProjects().toPromise();
-      this.projects = projects || []; // Ensure we always have an array
+      const projects = await firstValueFrom(this.projectService.getProjects());
+      this.projects = projects;
+      // Ensure projects are loaded before tasks
+      await this.loadTasks();
     } catch (error) {
       console.error('Error loading projects:', error);
-      this.projects = []; // Set to empty array on error
     }
   }
 
@@ -125,6 +212,11 @@ export class DashboardComponent {
     });
   }
 
+  openAddUserModal() {
+    // TODO: Implement user modal opening
+    console.log('Open add user modal');
+  }
+
   createTask() {
     if (!this.newTask.title) {
       alert('Please enter a task title');
@@ -157,6 +249,77 @@ export class DashboardComponent {
         alert('Failed to create task. Please try again.');
       }
     );
+  }
+
+  openAddProjectModal() {
+    this.editProjectMode = false;
+    this.selectedProject = null;
+    this.projectForm.reset();
+    this.modalService.open(this.addProjectModal);
+  }
+
+  editProject(project: Project) {
+    this.editProjectMode = true;
+    this.selectedProject = project;
+    this.projectForm.patchValue({
+      name: project.name,
+      description: project.description,
+      status: project.status
+    });
+    this.modalService.open(this.addProjectModal);
+  }
+
+  async saveProject() {
+    if (this.projectForm.valid) {
+      try {
+        const formData = this.projectForm.value;
+        if (this.editProjectMode && this.selectedProject) {
+          await this.projectService.updateProject(this.selectedProject.id, formData);
+        } else {
+          await this.projectService.createProject(formData);
+        }
+        this.modalService.dismissAll();
+        await this.loadProjects();
+      } catch (error) {
+        console.error('Error saving project:', error);
+      }
+    }
+  }
+
+  async deleteProject(project: Project) {
+    if (confirm('Are you sure you want to delete this project?')) {
+      try {
+        await this.projectService.deleteProject(project.id);
+        await this.loadProjects();
+      } catch (error) {
+        console.error('Error deleting project:', error);
+      }
+    }
+  }
+
+  viewAllTasks() {
+    this.router.navigate(['/tasks']);
+  }
+
+  async onSubmit() {
+    if (this.taskForm.valid) {
+      try {
+        const formData = this.taskForm.value;
+        if (this.editMode && this.selectedTask) {
+          await this.taskService.updateTask(this.selectedTask.id, formData);
+        } else {
+          await this.taskService.createTask(formData);
+        }
+        this.modalService.dismissAll();
+        await this.loadTasks();
+      } catch (error) {
+        console.error('Error saving task:', error);
+      }
+    }
+  }
+
+  dismissModal() {
+    this.modalService.dismissAll();
   }
 
   updateStats() {
