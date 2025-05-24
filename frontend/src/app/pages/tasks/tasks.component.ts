@@ -11,6 +11,7 @@ import { Task } from '../../models/task.model';
 import { Project } from '../../models/project.model';
 import { User } from '../../models/user.model';
 import { firstValueFrom } from 'rxjs';
+
 // In tasks.component.ts
 interface TaskWithProjectAndAssignee extends Task {
   project?: Project;
@@ -55,16 +56,16 @@ export class TasksComponent {
   ) {}
 
   ngOnInit() {
-    // Initialize form
+    // Initialize form with default values
     this.taskForm = this.fb.group({
       title: ['', Validators.required],
       description: ['', Validators.required],
-      project_id: ['', Validators.required],
-      assigned_to: ['', Validators.required],
-      priority: ['', Validators.required],
-      status: ['', Validators.required],
+      project_id: [null, Validators.required],
+      assigned_to: [null, Validators.required],
+      priority: ['medium', Validators.required],
+      status: ['pending', Validators.required],
       dueDate: ['', Validators.required],
-      progress: ['', Validators.required]
+      progress: [0, [Validators.required, Validators.min(0), Validators.max(100)]]
     });
 
     // Load data
@@ -112,8 +113,19 @@ export class TasksComponent {
       }
     });
   }
-
   loadUsers() {
+    this.userService.getUsers().subscribe({
+      next: (users: any) => {
+        console.log('Users loaded:', users); // Add this for debugging
+        this.users = users;
+      },
+      error: (error) => {
+        console.error('Error loading users:', error);
+        // You might want to show an error message to the user here
+      }
+    });
+  }
+ /* loadUsers() {
     this.userService.getUsers().subscribe({
       next: (users) => {
         this.users = users;
@@ -122,7 +134,7 @@ export class TasksComponent {
         console.error('Error loading users:', error);
       }
     });
-  }
+  }*/
 
   // Filter methods
   filterTasks() {
@@ -137,16 +149,24 @@ export class TasksComponent {
       return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesAssignee;
     });
   }
-// In tasks.component.ts
-dismissModal() {
-  this.modalService.dismissAll();
-}
+
   // Form methods
   openAddTaskModal() {
     this.editMode = false;
     this.selectedTask = null;
-    this.taskForm.reset();
-    this.modalService.open(this.addTaskModal);
+    this.taskForm.reset({
+      priority: 'medium',
+      status: 'pending',
+      progress: 0,
+      project_id: null,
+      assigned_to: null,
+      dueDate: ''
+    });
+    this.modalService.open(this.addTaskModal, { 
+      ariaLabelledBy: 'modal-basic-title',
+      backdrop: 'static',
+      keyboard: false
+    });
   }
 
   editTask(task: Task) {
@@ -159,26 +179,60 @@ dismissModal() {
       assigned_to: task.assigned_to,
       priority: task.priority,
       status: task.status,
-      dueDate: task.dueDate,
-      progress: task.progress
+      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+      progress: task.progress || 0
     });
-    this.modalService.open(this.addTaskModal);
+    this.modalService.open(this.addTaskModal, { 
+      ariaLabelledBy: 'modal-basic-title',
+      backdrop: 'static',
+      keyboard: false
+    });
   }
 
-  async onSubmit() {
-    if (this.taskForm.valid) {
-      try {
-        const formData = this.taskForm.value;
-        if (this.editMode && this.selectedTask) {
-          await this.taskService.updateTask(this.selectedTask.id, formData);
-        } else {
-          await this.taskService.createTask(formData);
-        }
-        this.modalService.dismissAll();
-        await this.loadTasks();
-      } catch (error) {
-        console.error('Error saving task:', error);
+  async onSubmit(modal?: any) {
+    if (this.taskForm.invalid) {
+      this.taskForm.markAllAsTouched();
+      return;
+    }
+
+    try {
+      // Disable form while submitting
+      this.taskForm.disable();
+      
+      const formValue = this.taskForm.value;
+      const taskData: Partial<Task> = {
+        title: formValue.title,
+        description: formValue.description,
+        project_id: Number(formValue.project_id),
+        assigned_to: Number(formValue.assigned_to),
+        priority: formValue.priority,
+        status: formValue.status,
+        dueDate: formValue.dueDate,
+        progress: Number(formValue.progress)
+      };
+
+      if (this.editMode && this.selectedTask) {
+        await firstValueFrom(this.taskService.updateTask(this.selectedTask.id, taskData));
+      } else {
+        await firstValueFrom(this.taskService.createTask(taskData as Task));
       }
+
+      // Close modal if it exists
+      if (modal) {
+        modal.close('Task saved');
+      } else {
+        this.modalService.dismissAll();
+      }
+
+      // Reload tasks
+      await this.loadTasks();
+
+    } catch (error) {
+      console.error('Error saving task:', error);
+      alert('Failed to save task. Please try again.');
+    } finally {
+      // Re-enable form
+      this.taskForm.enable();
     }
   }
 
@@ -201,5 +255,9 @@ dismissModal() {
         console.error('Error deleting task:', error);
       }
     }
+  }
+
+  dismissModal() {
+    this.modalService.dismissAll();
   }
 }

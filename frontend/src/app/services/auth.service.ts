@@ -18,6 +18,7 @@ interface LoginResponse {
   providedIn: 'root'
 })
 export class AuthService {
+  [x: string]: any;
   private apiUrl = 'http://localhost:3000/api';
   private currentUserSubject: BehaviorSubject<any>;
   public currentUser: Observable<any>;
@@ -76,7 +77,10 @@ export class AuthService {
 
     console.log('Sending login request with body:', requestBody);
 
-    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, requestBody, requestOptions).pipe(
+    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, { 
+      email: cleanEmail, 
+      password: cleanPassword 
+    }, requestOptions).pipe(
       tap({
         next: (response) => {
           console.log('Login response:', response);
@@ -86,44 +90,29 @@ export class AuthService {
             throw new Error('Invalid response from server');
           }
           
-          // Store user data and token
+          // Store both the full response (which includes user data) and the token separately
           localStorage.setItem('currentUser', JSON.stringify(response));
+          localStorage.setItem('token', response.token);  // Store token separately for easy access
           this.currentUserSubject.next(response);
+          this.loading = false;
         },
         error: (error) => {
-          console.error('Login error details:', {
-            status: error.status,
-            error: error.error,
-            message: error.message,
-            url: error.url
-          });
-          
+          console.error('Login error:', error);
           this.loading = false;
-          
-          let errorMessage = 'An unexpected error occurred. Please try again.';
-          
-          if (error.error && typeof error.error === 'object') {
-            errorMessage = error.error.message || errorMessage;
-          } else if (error.status === 401) {
-            errorMessage = 'Invalid email or password';
-          } else if (error.status === 400) {
-            errorMessage = 'Bad request. Please check your input.';
-          } else if (error.status === 500) {
-            errorMessage = 'Server error. Please try again later.';
+          let errorMessage = 'Login failed. Please check your credentials.';
+          if (error.error?.message) {
+            errorMessage = error.error.message;
           }
-          
           throw new Error(errorMessage);
-        },
-        complete: () => {
-          // Not needed since we reset loading in next and error
         }
       })
     );
   }
 
   logout() {
-    // Remove user from local storage and set current user to null
+    // Remove user data and token from local storage
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('token');
     this.currentUserSubject.next(null);
     this.router.navigate(['/login']);
   }

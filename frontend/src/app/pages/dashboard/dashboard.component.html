@@ -88,61 +88,137 @@
   </div>
 
   <!-- Modals -->
-  <ng-template #addTaskModal>
+  <ng-template #addTaskModal let-modal>
     <div class="modal-header">
-      <h5 class="modal-title">Add New Task</h5>
-      <button type="button" class="btn-close" aria-label="Close" (click)="dismissModal()"></button>
+      <h5 class="modal-title">{{ editMode ? 'Edit Task' : 'Add New Task' }}</h5>
+      <button type="button" class="btn-close" (click)="dismissModal()" aria-label="Close"></button>
     </div>
     <div class="modal-body">
       <form [formGroup]="taskForm" (ngSubmit)="onSubmit()">
+        <div *ngIf="!taskForm.valid && taskForm.touched" class="alert alert-danger">
+          Please fill in all required fields correctly.
+        </div>
+        
         <div class="mb-3">
-          <label class="form-label" for="taskTitle">Task Name</label>
-          <input type="text" class="form-control" id="taskTitle" formControlName="title" required>
-          <div class="invalid-feedback">
-            Please enter a task name
+          <label for="title" class="form-label">Title *</label>
+          <input type="text" class="form-control" id="title" formControlName="title" 
+                 [ngClass]="{'is-invalid': taskForm.get('title')?.invalid && taskForm.get('title')?.touched}">
+          <div *ngIf="taskForm.get('title')?.invalid && taskForm.get('title')?.touched" class="invalid-feedback">
+            Title is required
           </div>
         </div>
+        
         <div class="mb-3">
-          <label class="form-label" for="projectId">Project</label>
-          <select class="form-select" id="projectId" formControlName="projectId" required>
-            <option value="" disabled selected>Select a project</option>
-            <option *ngFor="let project of projects" [value]="project.id">
-              {{project.name}}
-            </option>
-          </select>
-          <div class="invalid-feedback">
-            Please select a project
+          <label for="description" class="form-label">Description *</label>
+          <textarea class="form-control" id="description" formControlName="description" rows="3"
+                   [ngClass]="{'is-invalid': taskForm.get('description')?.invalid && taskForm.get('description')?.touched}"></textarea>
+          <div *ngIf="taskForm.get('description')?.invalid && taskForm.get('description')?.touched" class="invalid-feedback">
+            Description is required
           </div>
         </div>
-        <div class="mb-3">
-          <label class="form-label" for="priority">Priority</label>
-          <select class="form-select" id="priority" formControlName="priority" required>
-            <option value="" disabled selected>Select priority</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-          <div class="invalid-feedback">
-            Please select a priority
+        
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="projectId" class="form-label">Project *</label>
+            <select class="form-select" id="projectId" formControlName="projectId"
+                   [ngClass]="{'is-invalid': taskForm.get('projectId')?.invalid && taskForm.get('projectId')?.touched}">
+              <option value="" disabled>Select Project</option>
+              <option *ngFor="let project of projects" [value]="project.id">
+                {{ project.name }}
+              </option>
+            </select>
+            <div *ngIf="taskForm.get('projectId')?.invalid && taskForm.get('projectId')?.touched" class="invalid-feedback">
+              Please select a project
+            </div>
+          </div>
+          
+          <div class="col-md-6 mb-3">
+            <label for="assigned_to" class="form-label">Assign To *</label>
+            <select 
+              class="form-select" 
+              id="assigned_to" 
+              formControlName="assigned_to"
+              [ngClass]="{'is-invalid': taskForm.get('assigned_to')?.invalid && taskForm.get('assigned_to')?.touched}">
+              
+              <option value="" disabled>Select Assignee</option>
+              
+              <!-- Managers Group -->
+              <optgroup *ngIf="managers.length > 0" label="Managers">
+                <option *ngFor="let user of managers" [value]="user.id">
+                  {{ user.username }} ({{ user.role }})
+                </option>
+              </optgroup>
+              
+              <!-- Team Members Group -->
+              <optgroup *ngIf="teamMembers.length > 0" label="Team Members">
+                <option *ngFor="let user of teamMembers" [value]="user.id">
+                  {{ user.username }} ({{ user.role }})
+                </option>
+              </optgroup>
+              
+              <!-- Fallback if no users are found -->
+              <option *ngIf="managers.length === 0 && teamMembers.length === 0" disabled>
+                No users available
+              </option>
+              
+            </select>
+            
+            <div 
+              *ngIf="taskForm.get('assigned_to')?.invalid && taskForm.get('assigned_to')?.touched" 
+              class="invalid-feedback">
+              Please select an assignee
+            </div>
           </div>
         </div>
-        <div class="mb-3">
-          <label class="form-label" for="dueDate">Due Date</label>
-          <input type="date" class="form-control" id="dueDate" formControlName="dueDate" required>
-          <div class="invalid-feedback">
-            Please select a due date
+        
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="priority" class="form-label">Priority *</label>
+            <select class="form-select" id="priority" formControlName="priority"
+                   [ngClass]="{'is-invalid': taskForm.get('priority')?.invalid && taskForm.get('priority')?.touched}">
+              <option *ngFor="let priority of priorities" [value]="priority">
+                {{ priority | titlecase }}
+              </option>
+            </select>
+          </div>
+          
+          <div class="col-md-6 mb-3">
+            <label for="status" class="form-label">Status *</label>
+            <select class="form-select" id="status" formControlName="status"
+                   [ngClass]="{'is-invalid': taskForm.get('status')?.invalid && taskForm.get('status')?.touched}">
+              <option *ngFor="let status of statuses" [value]="status">
+                {{ status === 'in_progress' ? 'In Progress' : (status | titlecase) }}
+              </option>
+            </select>
           </div>
         </div>
+        
         <div class="mb-3">
-          <label class="form-label" for="description">Description</label>
-          <textarea class="form-control" id="description" formControlName="description" rows="4"></textarea>
+          <label for="dueDate" class="form-label">Due Date *</label>
+          <input type="date" class="form-control" id="dueDate" formControlName="dueDate"
+                 [ngClass]="{'is-invalid': (taskForm.get('dueDate')?.invalid || taskForm.get('dueDate')?.hasError('invalidDate')) && taskForm.get('dueDate')?.touched}">
+          <div *ngIf="taskForm.get('dueDate')?.invalid && taskForm.get('dueDate')?.touched" class="invalid-feedback">
+            <div *ngIf="taskForm.get('dueDate')?.hasError('required')">Due date is required</div>
+            <div *ngIf="taskForm.get('dueDate')?.hasError('invalidDate')">Please select today's date or a future date</div>
+          </div>
         </div>
-        <div class="text-end">
-          <button type="button" class="btn btn-secondary me-2" (click)="dismissModal()">
+        
+        <div class="mb-3">
+          <label for="progress" class="form-label">Progress (%) *</label>
+          <input type="number" class="form-control" id="progress" formControlName="progress" min="0" max="100"
+                 [ngClass]="{'is-invalid': taskForm.get('progress')?.invalid && taskForm.get('progress')?.touched}">
+          <div *ngIf="taskForm.get('progress')?.invalid && taskForm.get('progress')?.touched" class="invalid-feedback">
+            Progress must be between 0 and 100
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="dismissModal()" [disabled]="taskForm.disabled">
             Cancel
           </button>
-          <button type="submit" class="btn btn-primary" [disabled]="!taskForm.valid">
-            Create Task
+          <button type="submit" class="btn btn-primary" [disabled]="taskForm.invalid || taskForm.disabled">
+            <span *ngIf="taskForm.disabled" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            {{ editMode ? 'Update' : 'Create' }} Task
           </button>
         </div>
       </form>

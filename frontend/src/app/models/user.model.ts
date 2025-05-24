@@ -3,11 +3,12 @@ export interface User {
   username: string;
   email: string;
   role: 'admin' | 'user'| 'manager';
-  department: string;
-  position: string;
-  phone: string;
+  // Optional fields that might be present in some responses
+  department?: string;
+  position?: string;
+  phone?: string;
   avatar?: string;
-  status: 'active' | 'inactive';
-  assignedTasks: number;
+  status?: 'active' | 'inactive';
+  assignedTasks?: number;
   created_at?: string;
 }

@@ -50,46 +50,22 @@ export class LoginComponent implements OnInit {
   // Convenience getter for easy access to form fields
   get f() { return this.loginForm.controls; }
 
-  onSubmit() {
-    this.submitted = true;
-    this.error = ''; // Clear previous errors
-
-    // Stop here if form is invalid
-    if (this.loginForm.invalid) {
-      console.log('Form is invalid');
-      this.loading = false;
-      return;
-    }
-
-    this.loading = true;
-    const email = this.f['email'].value;
-    const password = this.f['password'].value;
-    
-    console.log('Attempting login with email:', email);
-    
-    this.authService.login(email, password).subscribe({
-      next: (response) => {
-        console.log('Login successful, navigating to:', this.returnUrl);
-        this.loading = false; // Reset loading state on success
-        this.router.navigate([this.returnUrl]);
-      },
-      error: (error) => {
-        console.error('Login error:', error);
-        this.loading = false; // Reset loading state immediately on error
-        this.error = error.message || 'Login failed. Please try again.';
-        
-        // Clear the password field on error
-        this.loginForm.patchValue({ password: '' });
-        
-        // Focus back on the email field
-        const emailControl = document.getElementById('email') as HTMLInputElement;
-        if (emailControl) {
-          emailControl.focus();
-        }
-      },
-      complete: () => {
-        // Not needed since we reset loading in next and error
-      }
-    });
+ // In your login component
+onSubmit() {
+  if (this.loginForm.invalid) {
+    return;
   }
-}
+
+  this.loading = true;
+  this.authService.login(this.f['email'].value, this.f['password'].value).subscribe({
+    next: () => {
+      // Login successful
+      const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
+      this.router.navigate([returnUrl]);
+    },
+    error: (error) => {
+      this.error = error.message || 'Login failed';
+      this.loading = false;
+    }
+  });
+}}

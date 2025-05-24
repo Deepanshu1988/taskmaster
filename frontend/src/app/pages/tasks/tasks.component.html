@@ -143,70 +143,110 @@
     </div>
   </div>
 
-  <!-- Add/Edit Task Modal -->
-  <ng-template #addTaskModal>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">{{editMode ? 'Edit Task' : 'Add New Task'}}</h5>
-        <button type="button" class="btn-close" (click)="dismissModal()"></button>
-      </div>
-      <div class="modal-body">
-        <form [formGroup]="taskForm" (ngSubmit)="onSubmit()">
-          <div class="mb-3">
-            <label class="form-label">Task Name</label>
-            <input type="text" class="form-control" formControlName="name" required>
+  <!-- Add Task Modal -->
+  <ng-template #addTaskModal let-modal>
+    <div class="modal-header">
+      <h5 class="modal-title">{{ editMode ? 'Edit Task' : 'Add New Task' }}</h5>
+      <button type="button" class="btn-close" (click)="modal.dismiss('Cross click')" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+      <form [formGroup]="taskForm" (ngSubmit)="onSubmit(modal)">
+        <div *ngIf="!taskForm.valid" class="alert alert-danger">
+          Please fill in all required fields correctly.
+        </div>
+        
+        <div class="mb-3">
+          <label for="title" class="form-label">Title</label>
+          <input type="text" class="form-control" id="title" formControlName="title" required>
+          <div *ngIf="taskForm.get('title')?.invalid && taskForm.get('title')?.touched" class="text-danger">
+            Title is required
           </div>
-          <div class="mb-3">
-            <label class="form-label">Description</label>
-            <textarea class="form-control" formControlName="description" rows="3"></textarea>
+        </div>
+        
+        <div class="mb-3">
+          <label for="description" class="form-label">Description</label>
+          <textarea class="form-control" id="description" formControlName="description" rows="3" required></textarea>
+          <div *ngIf="taskForm.get('description')?.invalid && taskForm.get('description')?.touched" class="text-danger">
+            Description is required
           </div>
-          <div class="mb-3">
-            <label class="form-label">Project</label>
-            <select class="form-select" formControlName="projectId" required>
+        </div>
+        
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="project_id" class="form-label">Project</label>
+            <select class="form-select" id="project_id" formControlName="project_id" required>
+              <option value="" disabled>Select Project</option>
               <option *ngFor="let project of projects" [value]="project.id">
-                {{project.name}}
+                {{ project.name }}
               </option>
             </select>
+            <div *ngIf="taskForm.get('project_id')?.invalid && taskForm.get('project_id')?.touched" class="text-danger">
+              Please select a project
+            </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Assignee</label>
-            <select class="form-select" formControlName="assigneeId" required>
+          
+          <div class="col-md-6 mb-3">
+            <pre>{{ users | json }}</pre>
+            <label for="assigned_to" class="form-label">Assign To</label>
+            <select class="form-select" id="assigned_to" formControlName="assigned_to" required>
+              <p *ngIf="users && users.length > 0">Users Loaded: {{ users.length }}</p>
+              <option value="" disabled>Select Assignee</option>
               <option *ngFor="let user of users" [value]="user.id">
-                {{user.username}}
+                {{ user.username }} ({{user.role}})
               </option>
             </select>
+            <div *ngIf="taskForm.get('assigned_to')?.invalid && taskForm.get('assigned_to')?.touched" class="text-danger">
+              Please select an assignee
+            </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Priority</label>
-            <select class="form-select" formControlName="priority" required>
+        </div>
+        
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="priority" class="form-label">Priority</label>
+            <select class="form-select" id="priority" formControlName="priority" required>
               <option value="high">High</option>
-              <option value="medium">Medium</option>
+              <option value="medium" selected>Medium</option>
               <option value="low">Low</option>
             </select>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Status</label>
-            <select class="form-select" formControlName="status" required>
+          
+          <div class="col-md-6 mb-3">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select" id="status" formControlName="status" required>
               <option value="pending">Pending</option>
-              <option value="in-progress">In Progress</option>
+              <option value="in_progress">In Progress</option>
               <option value="completed">Completed</option>
             </select>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Due Date</label>
-            <input type="date" class="form-control" formControlName="dueDate" required>
+        </div>
+        
+        <div class="mb-3">
+          <label for="dueDate" class="form-label">Due Date</label>
+          <input type="date" class="form-control" id="dueDate" formControlName="dueDate" required>
+          <div *ngIf="taskForm.get('dueDate')?.invalid && taskForm.get('dueDate')?.touched" class="text-danger">
+            Please select a due date
           </div>
-          <div class="mb-3">
-            <label class="form-label">Progress</label>
-            <input type="number" class="form-control" formControlName="progress" min="0" max="100" required>
+        </div>
+        
+        <div class="mb-3">
+          <label for="progress" class="form-label">Progress</label>
+          <input type="number" class="form-control" id="progress" formControlName="progress" min="0" max="100" required>
+          <div *ngIf="taskForm.get('progress')?.invalid && taskForm.get('progress')?.touched" class="text-danger">
+            Please enter a valid progress value (0-100)
           </div>
-          <div class="text-end">
-            <button type="submit" class="btn btn-primary" [disabled]="!taskForm.valid">
-              {{editMode ? 'Update Task' : 'Create Task'}}
-            </button>
-          </div>
-        </form>
-      </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Cancel click')" [disabled]="taskForm.disabled">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="taskForm.invalid || taskForm.disabled">
+            <span *ngIf="taskForm.disabled" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            {{ editMode ? 'Update' : 'Create' }} Task
+          </button>
+        </div>
+      </form>
     </div>
   </ng-template>
 </div>
