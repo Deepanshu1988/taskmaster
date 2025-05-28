@@ -87,13 +87,16 @@
                       </div>
                     </div>
                   </td>
-                  <td>{{task.project?.name}}</td>
+                  <td>{{task.project?.name || 'No project'}}</td>
                   <td>
                     <div class="d-flex align-items-center">
                       <div class="avatar me-2">
                         <img [src]="task.assignee?.avatar" class="rounded-circle" alt="">
                       </div>
-                      <span>{{task.assignee?.username}}</span>
+                      <!--<td>{{ task | json }}</td>-->
+                      
+                      <span>{{ getUsername(task.assigned_to) }}</span>
+                     <!-- (User ID: {{task.assigned_to}} not found) -->
                     </div>
                   </td>
                   <td>
@@ -186,13 +189,12 @@
           </div>
           
           <div class="col-md-6 mb-3">
-            <pre>{{ users | json }}</pre>
             <label for="assigned_to" class="form-label">Assign To</label>
             <select class="form-select" id="assigned_to" formControlName="assigned_to" required>
               <p *ngIf="users && users.length > 0">Users Loaded: {{ users.length }}</p>
               <option value="" disabled>Select Assignee</option>
               <option *ngFor="let user of users" [value]="user.id">
-                {{ user.username }} ({{user.role}})
+                {{ user.username }} ({{ user.email }}) - {{ user.role }}
               </option>
             </select>
             <div *ngIf="taskForm.get('assigned_to')?.invalid && taskForm.get('assigned_to')?.touched" class="text-danger">

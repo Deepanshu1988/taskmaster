@@ -8,26 +8,32 @@ import { User } from '../models/user.model';
 })
 export class UserService {
   private apiUrl = 'http://localhost:3000/api/users';
+  // private userId = localStorage.getItem('id')?.trim() || '';
+
 
   constructor(private http: HttpClient) {}
 
   private getHeaders(): HttpHeaders {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token')?.trim();
     console.log('Current token from localStorage:', token ? 'Token exists' : 'No token found');
     
-    if (token) {
-      console.log('Token length:', token.length);
-      console.log('Token starts with:', token.substring(0, 20) + '...');
+    if (!token) {
+      console.error('No token found in localStorage');
+      return new HttpHeaders({
+        'Content-Type': 'application/json'
+      });
     }
   
-    const headers = new HttpHeaders({
+    console.log('Token start/end:', 
+      token.substring(0, 10) + '...' + token.substring(token.length - 10));
+    
+    return new HttpHeaders({
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token || ''}`
+      'Authorization': `Bearer ${token}`
     });
-  
-    console.log('Request headers:', JSON.stringify(headers));
-    return headers;
   }
+  
+ 
 
   private handleError(error: HttpErrorResponse) {
   console.error('API Error:', {
@@ -54,16 +60,30 @@ export class UserService {
 }
 
 getUsers(): Observable<User[]> {
-  return this.http.get<User[]>(this.apiUrl).pipe(
+  return this.http.get<User[]>(`${this.apiUrl}`, { 
+    headers: this.getHeaders() 
+  }).pipe(
     catchError(this.handleError)
   );
 }
-  getUser(id: number): Observable<User> {
-    return this.http.get<User>(`${this.apiUrl}/${id}`, { headers: this.getHeaders() })
-      .pipe(
-        catchError(this.handleError)
-      );
-  }
+getUsersByRole(role: string): Observable<any[]> {
+  return this.http.get<any[]>(`${this.apiUrl}?role=${role}`, { 
+    headers: this.getHeaders() 
+  }).pipe(
+    catchError(this.handleError)
+  );
+}
+// Add this method to your UserService
+// getCurrentUser(): Observable<User> {
+//   if (!this.userId) {
+//     return throwError(() => new Error('No user ID found in localStorage'));
+//   }
+//   return this.http.get<User>(`${this.apiUrl}/${this.userId}`, { 
+//     headers: this.getHeaders() 
+//   }).pipe(
+//     catchError(this.handleError)
+//   );
+// }
 
   updateUser(id: number, user: Partial<User>): Observable<void> {
     return this.http.put<void>(`${this.apiUrl}/${id}`, user, { headers: this.getHeaders() })

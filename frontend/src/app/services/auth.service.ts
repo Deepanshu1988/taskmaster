@@ -111,9 +111,10 @@ export class AuthService {
 
   logout() {
     // Remove user data and token from local storage
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('token');
-    this.currentUserSubject.next(null);
-    this.router.navigate(['/login']);
+    
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentUser');
+      this.currentUserSubject.next(null);
+      this.router.navigate(['/login']);
+    }
   }
-}

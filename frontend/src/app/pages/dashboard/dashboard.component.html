@@ -54,12 +54,14 @@
             <tbody>
               <tr *ngFor="let task of recentTasks">
                 <td>{{task.title}}</td>
-                <td>{{task.project?.name}}</td>
+               <!-- <td>{{ task | json }}</td> -->
+                <td>{{task.project?.name || 'No project'}}</td>
                 <td>
                   <span class="badge" [ngClass]="{'bg-success': task.status === 'completed', 'bg-warning': task.status === 'in_progress', 'bg-info': task.status === 'pending'}">
                     {{task.status}}
                   </span>
                 </td>
+                <td>{{ task | json }}</td>
                 <td>{{task.dueDate | date}}</td>
                 <td>
                   <span class="badge" [ngClass]="{'bg-danger': task.priority === 'high', 'bg-warning': task.priority === 'medium', 'bg-success': task.priority === 'low'}">
@@ -195,7 +197,7 @@
         
         <div class="mb-3">
           <label for="dueDate" class="form-label">Due Date *</label>
-          <input type="date" class="form-control" id="dueDate" formControlName="dueDate"
+          <input type="date" class="form-control" id="dueDate" formControlName="dueDate" 
                  [ngClass]="{'is-invalid': (taskForm.get('dueDate')?.invalid || taskForm.get('dueDate')?.hasError('invalidDate')) && taskForm.get('dueDate')?.touched}">
           <div *ngIf="taskForm.get('dueDate')?.invalid && taskForm.get('dueDate')?.touched" class="invalid-feedback">
             <div *ngIf="taskForm.get('dueDate')?.hasError('required')">Due date is required</div>

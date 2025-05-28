@@ -176,18 +176,26 @@ export class DashboardComponent implements OnInit {
   async loadTasks() {
     try {
       const tasks = await firstValueFrom(this.taskService.getTasks());
-      this.tasks = tasks;
-      this.recentTasks = this.tasks.slice(0, 5);
       
-      // Map project names to tasks
-      for (const task of this.tasks) {
-        if (task.project_id) {
-          const project = this.projects.find(p => p.id === task.project_id);
-          if (project) {
-            task['project'] = project;
-          }
+      // Map project and format dates for all tasks
+      this.tasks = tasks.map(task => {
+        const taskWithProject: TaskWithProject = {
+          ...task,
+          project: this.projects.find(p => p.id === task.project_id?.toString())
+        };
+        
+        // Format the due date if it exists
+        if (task.dueDate) {
+          taskWithProject.dueDate = this.formatDate(task.dueDate);
         }
-      }
+        
+        return taskWithProject;
+      });
+      
+      // Get most recent 5 tasks
+      this.recentTasks = [...this.tasks]
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        .slice(0, 5);
       
       this.updateStats();
     } catch (error) {
@@ -476,5 +484,15 @@ export class DashboardComponent implements OnInit {
     this.stats[0].value = total.toString();
     this.stats[1].value = completed.toString();
     this.stats[2].value = inProgress.toString();
+  }
+
+  // Helper method to format date
+  private formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
   }
 }

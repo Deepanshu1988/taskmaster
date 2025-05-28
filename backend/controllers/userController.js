@@ -1,14 +1,60 @@
 const User = require('../models/userModel');
-
+const pool = require('../config/db');
+// exports.getUsers = async (req, res) => {
+//   try {
+//     // If an ID is provided in the URL, handle single user request
+//     if (req.params.id) {
+//       const user = await User.findById(req.params.id);
+//       if (!user) {
+//         return res.status(404).json({ error: 'User not found' });
+//       }
+//       // Check if user is admin or requesting their own data
+//       if (req.user.role !== 'admin' && req.user.id !== user.id) {
+//         return res.status(403).json({ error: 'Unauthorized' });
+//       }
+//       return res.json({ 
+//         id: user.id, 
+//         username: user.username, 
+//         email: user.email, 
+//         role: user.role 
+//       });
+//     }
+    
+//     // If no ID provided, handle get all users (admin only)
+//     if (req.user.role !== 'admin') {
+//       return res.status(403).json({ error: 'Admin access required' });
+//     }
+    
+//     const [users] = await pool.query('SELECT id, username, email, role FROM users');
+//     return res.json(users);
+    
+//   } catch (error) {
+//     console.error('Error in getUsers:', error);
+//     res.status(500).json({ 
+//       error: 'Server error',
+//       details: process.env.NODE_ENV === 'development' ? error.message : undefined
+//     });
+//   }
+// };
 exports.getUsers = async (req, res) => {
   try {
+    // Check if user is admin
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
-    const [users] = await pool.query('SELECT id, username, email, role FROM users');
+    
+    const [users] = await pool.query(`
+      SELECT id, username, email, role 
+      FROM users
+    `);
+    
     res.json(users);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error in getUsers:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

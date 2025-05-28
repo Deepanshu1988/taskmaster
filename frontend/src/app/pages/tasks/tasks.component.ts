@@ -82,26 +82,32 @@ export class TasksComponent {
       // Map project names to tasks
       for (const task of this.tasks) {
         if (task.project_id) {
-          const project = this.projects.find(p => p.id === task.project_id);
+          const project = this.projects.find(p => p.id === task.project_id?.toString());
           if (project) {
             task.project = project;
           }
         }
         
         // Map assignee to tasks
-        if (task.assigned_to) {
-          const user = this.users.find(u => u.id === task.assigned_to);
-          if (user) {
-            task.assignee = user;
-          }
+      if (task.assigned_to) {
+        console.log('\nProcessing task:', task.id, 'Assigned to ID:', task.assigned_to?.toString());
+        const user = this.users.find(u => u.username === task.assigned_to?.toString());
+        console.log('Found user:', user);
+        if (user) {
+          task.assignee = user;
+        } else {
+          console.warn('No matching user found for ID:', task.assigned_to);
+          console.log('Available users:', this.users.map(u => ({id: u.id, username: u.username})));
         }
       }
-      
-      this.filteredTasks = [...this.tasks];
-    } catch (error) {
-      console.error('Error loading tasks:', error);
     }
+    
+    this.filteredTasks = [...this.tasks];
+    console.log('Tasks after mapping:', this.tasks);
+  } catch (error) {
+    console.error('Error loading tasks:', error);
   }
+}
 
   loadProjects() {
     this.projectService.getProjects().subscribe({
@@ -135,7 +141,15 @@ export class TasksComponent {
       }
     });
   }*/
-
+    getUsername(userId: number | string | undefined): string {
+      if (!userId) return 'Unassigned';
+      
+      // Convert both IDs to string for comparison to avoid type issues
+      const userIdStr = userId.toString();
+      const user = this.users.find(u => u.id.toString() === userIdStr);
+      
+      return user ? user.username : 'Unknown User';
+    }
   // Filter methods
   filterTasks() {
     this.filteredTasks = this.tasks.filter(task => {
