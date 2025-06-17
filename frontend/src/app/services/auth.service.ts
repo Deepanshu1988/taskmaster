@@ -1,8 +1,8 @@
 // auth.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { tap, catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
 
 interface LoginResponse {
@@ -29,7 +29,6 @@ export class AuthService {
   private currentUserSubject: BehaviorSubject<any>;
   public currentUser: Observable<any>;
   private loading = false;
-
   constructor(private http: HttpClient, private router: Router) {
     const storedUser = localStorage.getItem('currentUser');
     this.currentUserSubject = new BehaviorSubject<any>(
@@ -49,6 +48,16 @@ export class AuthService {
 
   public get isLoading() {
     return this.loading;
+  }
+
+  private handleAuthError(error: any): Observable<never> {
+    if (error.status === 401 || error.error?.name === 'TokenExpiredError') {
+      // Clear the expired token and user data
+      this.logout();
+      // Redirect to login page
+      this.router.navigate(['/login']);
+    }
+    return throwError(() => error);
   }
 
   login(email: string, password: string): Observable<LoginResponse> {
@@ -111,7 +120,8 @@ export class AuthService {
           }
           throw new Error(errorMessage);
         }
-      })
+      }),
+      catchError(this.handleAuthError.bind(this))
     );
   }
 

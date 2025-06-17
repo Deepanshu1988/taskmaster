@@ -23,20 +23,14 @@ export interface Notification {
   providedIn: 'root'
 })
 export class NotificationService {
-  showError(arg0: string) {
-    throw new Error('Method not implemented.');
-  }
-  showSuccess(arg0: string) {
-    throw new Error('Method not implemented.');
-  }
   private apiUrl = `${environment.apiUrl}/api/notifications`;
   private wsUrl = environment.wsUrl || 'ws://localhost:3000';
   
   private notifications$ = new BehaviorSubject<Notification[]>([]);
   private unreadCount$ = new BehaviorSubject<number>(0);
   private ws!: WebSocket;
-    sendTestNotification: any;
-    toastr: any;
+  sendTestNotification: any;
+  toastr: any;
 
   constructor(private http: HttpClient) {
   //  this.connectWebSocket();
@@ -190,6 +184,25 @@ export class NotificationService {
     const count = notifications.filter(n => n.status === 'unread').length;
     this.unreadCount$.next(count);
   }
+
+  showSuccess(message: string): void {
+    // Using toastr if available, otherwise fallback to console
+    if (this.toastr) {
+      this.toastr.success(message, 'Success');
+    } else {
+      console.log('Success:', message);
+    }
+  }
+
+  showError(message: string): void {
+    // Using toastr if available, otherwise fallback to console
+    if (this.toastr) {
+      this.toastr.error(message, 'Error');
+    } else {
+      console.error('Error:', message);
+    }
+  }
+
   private async requestPushPermission(): Promise<boolean> {
     if (!('Notification' in window)) {
       return false;
@@ -207,6 +220,7 @@ export class NotificationService {
     const permission = await Notification.requestPermission();
     return permission === 'granted';
   }
+
   ngOnDestroy() {
     if (this.ws) {
       this.ws.close();

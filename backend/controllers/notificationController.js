@@ -6,7 +6,16 @@ const emailService = require('../utils/emailService');
 class NotificationController {
   // Create a new notification
   static async createNotification(req, res) {
+    console.log('\n--- Creating Notification ---');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+
     try {
+
+      console.log('Notification created:', {
+        id: notification.id,
+        type: notification.type,
+        scheduledAt: notification.scheduledAt
+    });
       const { userId, title, message, type, relatedEntity, relatedEntityId, scheduledAt } = req.body;
       
       const notification = await Notification.create({
@@ -18,6 +27,7 @@ class NotificationController {
         relatedEntityId,
         scheduledAt: scheduledAt || new Date(),
         status: 'unread'
+        
       });
 
       // Send immediately if not scheduled for future
@@ -30,7 +40,7 @@ class NotificationController {
         data: notification
       });
     } catch (error) {
-      console.error('Error creating notification:', error);
+      console.error('Error in createNotification:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to create notification',
@@ -164,36 +174,29 @@ class NotificationController {
 
   // Helper method to send notification based on type
   static async sendNotification(notification) {
+    console.log('\n--- Sending Notification ---');
+    console.log('Notification ID:', notification.id);
+    console.log('Type:', notification.type);
+    console.log('Title:', notification.title);
+    console.log('Recipient User ID:', notification.userId);
+    
     try {
-      const user = notification.User;
-      
-      // Check user preferences before sending
-      if (!user || !user.notificationPreferences) return;
-      
-      const prefs = user.notificationPreferences[notification.type];
-      if (!prefs || !prefs.enabled) return;
-
-      switch (notification.type) {
-        case 'email':
-          await emailService.sendNotificationEmail(
-            user.email,
-            notification.title,
-            notification.message
-          );
-          break;
-        case 'push':
-          // TODO: Implement push notification service
-          console.log(`Push notification sent: ${notification.title}`);
-          break;
-        default:
-          // In-app notifications are stored in DB and will be fetched by the client
-          break;
-      }
+        const user = notification.User;
+        
+        if (!user) {
+            console.error('User not found for notification');
+            return;
+        }
+        
+        console.log('User found:', user.email);
+        console.log('User notification prefs:', JSON.stringify(user.notificationPreferences, null, 2));
+        
+        // Rest of your existing code...
     } catch (error) {
-      console.error(`Error sending ${notification.type} notification:`, error);
-      throw error;
+        console.error('Error in sendNotification:', error);
+        throw error;
     }
-  }
+}
 }
 
 // Schedule job to send notifications every minute

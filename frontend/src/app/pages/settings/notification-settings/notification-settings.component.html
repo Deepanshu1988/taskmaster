@@ -25,20 +25,17 @@
     <div class="ps-4" [class.text-muted]="!emailGroup.get('enabled')?.value">
       <div class="form-check mb-2">
         <input class="form-check-input" type="checkbox" id="emailTaskReminders" 
-               [formControl]="emailGroup.get('taskReminders')" 
-               [disabled]="!emailGroup.get('enabled')?.value">
+               [formControl]="emailGroup.get('taskReminders')">
         <label class="form-check-label" for="emailTaskReminders">Task reminders</label>
       </div>
       <div class="form-check mb-2">
         <input class="form-check-input" type="checkbox" id="emailDueDateAlerts" 
-               [formControl]="emailGroup.get('dueDateAlerts')" 
-               [disabled]="!emailGroup.get('enabled')?.value">
+               [formControl]="emailGroup.get('dueDateAlerts')">
         <label class="form-check-label" for="emailDueDateAlerts">Due date alerts</label>
       </div>
       <div class="form-check">
         <input class="form-check-input" type="checkbox" id="emailStatusUpdates" 
-               [formControl]="emailGroup.get('statusUpdates')" 
-               [disabled]="!emailGroup.get('enabled')?.value">
+               [formControl]="emailGroup.get('statusUpdates')">
         <label class="form-check-label" for="emailStatusUpdates">Status updates</label>
       </div>
     </div>
@@ -61,20 +58,17 @@
           <div class="ps-4" [class.text-muted]="!settingsForm.get('in_app')?.get('enabled')?.value">
             <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="inAppTaskReminders" 
-                       [formControl]="inAppTaskReminders"
-                       [disabled]="!inAppEnabled.value">
+                       [formControl]="inAppTaskReminders">
                 <label class="form-check-label" for="inAppTaskReminders">Task reminders</label>
               </div>
             <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="inAppMentions" 
-                       [formControl]="inAppMentions"
-                       [disabled]="!inAppEnabled.value">
+                       [formControl]="inAppMentions">
                 <label class="form-check-label" for="inAppMentions">Mentions</label>
               </div>
               <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="inAppStatusUpdates" 
-                       [formControl]="inAppStatusUpdates"
-                       [disabled]="!inAppEnabled.value">
+                       [formControl]="inAppStatusUpdates">
                 <label class="form-check-label" for="inAppStatusUpdates">Status updates</label>
               </div>
           </div>
@@ -97,14 +91,12 @@
               </div>
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="pushTaskReminders" 
-                   [formControl]="pushTaskReminders"
-                   [disabled]="!pushEnabled.value">
+                   [formControl]="pushTaskReminders">
             <label class="form-check-label" for="pushTaskReminders">Task reminders</label>
           </div>
           <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="pushMentions" 
-                       [formControl]="pushMentions"
-                       [disabled]="!pushEnabled.value">
+                       [formControl]="pushMentions">
                 <label class="form-check-label" for="pushMentions">Mentions</label>
               </div>
             </div>

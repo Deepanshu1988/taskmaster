@@ -7,11 +7,14 @@ const userRoutes = require('./routes/userRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const departmentRoutes = require('./routes/departmentRoutes');
 const timeTrackingRoutes = require('./routes/timeTrackingRoutes');
+
 const app = express();
 const db = require('./config/db');
 console.log('Database module loaded:', typeof db);
 app.set('db', db);
 console.log('Database attached to app:', !!app.get('db'));
+
+
 // Middleware
 app.use(cors({
   origin: 'http://localhost:4200',
@@ -21,6 +24,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
+
 app.use('/api/tasks', taskRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);

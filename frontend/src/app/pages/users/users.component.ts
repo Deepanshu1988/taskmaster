@@ -102,11 +102,24 @@ export class UsersComponent implements OnInit {
   // Data loading methods
   loadUsers() {
     this.userService.getUsers().subscribe({
-      next: (users: User[]) => {  
-        this.users = users.map(user => ({
-          ...user,
-          department: (user as any).department_name || user.department || 'No Department'
-        }));
+      next: (users: User[]) => {
+        this.users = users.map(user => {
+          // Find the department object that matches the user's department ID
+          const userDepartment = this.departments.find(dept => 
+            dept.id === user.department || 
+            dept.id === Number(user.department) ||
+            (typeof user.department === 'string' && dept.name === user.department)
+          );
+          
+          // Create a new user object with the mapped department name
+          const userWithMappedDepartment: User = {
+            ...user,
+            department: userDepartment ? userDepartment.name : user.department || 'No Department',
+            department_name: userDepartment ? userDepartment.name : undefined
+          };
+          
+          return userWithMappedDepartment;
+        });
         this.filteredUsers = [...this.users];
       },
       error: (error) => {
@@ -189,19 +202,14 @@ export class UsersComponent implements OnInit {
     console.log('Patching form with user:', user);
     console.log('Available departments:', this.departments);
     
-    // Find the department by name or ID
-    let departmentId = null;
-    if (user.department) {
-      // If department is already an ID
-      if (typeof user.department === 'number') {
-        departmentId = user.department;
-      } 
-      // If department is a string (name), find matching department
-      else if (typeof user.department === 'string') {
-        const foundDept = this.departments.find(d => 
-          d.name === user.department || String(d.id) === user.department
-        );
-        departmentId = foundDept?.id || user.department;
+    // Find the department ID - either directly from user.department or by looking up the department by name
+    let departmentId: string | number | undefined = user.department;
+    
+    // If department is a string (name), try to find the matching department ID
+    if (typeof user.department === 'string' && user.department !== 'No Department') {
+      const foundDept = this.departments.find(d => d.name === user.department);
+      if (foundDept) {
+        departmentId = foundDept.id;
       }
     }
     
@@ -210,8 +218,8 @@ export class UsersComponent implements OnInit {
     this.userForm.patchValue({
       username: user.username,
       email: user.email,
-      role: user.role,
-      department: departmentId,
+      role: user.role || '',
+      department: departmentId || '',
       status: user.status || 'active'
     }, { emitEvent: false });
     

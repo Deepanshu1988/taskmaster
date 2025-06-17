@@ -84,7 +84,7 @@ exports.signup = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = await User.create({ username, email, password: hashedPassword, role });
     const token = jwt.sign({ id: userId, role }, process.env.JWT_SECRET || DEFAULT_JWT_SECRET, { 
-      expiresIn: '1h',
+      expiresIn: '24h',
       algorithm: 'HS256'
     });
     res.status(201).json({ 
@@ -152,7 +152,7 @@ exports.login = async (req, res) => {
         id: user.id, 
         role: user.role 
       }, process.env.JWT_SECRET || DEFAULT_JWT_SECRET, {
-        expiresIn: '1h',
+        expiresIn: '24h',
         algorithm: 'HS256'
       });
 

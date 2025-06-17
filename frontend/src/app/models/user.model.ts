@@ -1,5 +1,6 @@
 // models/user.model.ts
 export interface User {
+  departmentId: string | number | undefined;
   id: number;
   username: string;
   email: string;

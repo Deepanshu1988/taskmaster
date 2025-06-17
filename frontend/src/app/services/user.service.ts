@@ -63,15 +63,41 @@ export class UserService {
     if (!currentUser?.user?.id) {
       return throwError(() => new Error('No current user found'));
     }
+    
+    // Stringify the preferences object
+    const preferencesToSend = {
+      notification_preferences: JSON.stringify(preferences)
+    };
+    
+    console.log('Saving preferences:', preferencesToSend);
   
-    return this.http.put(
+    return this.http.put<any>(
       `${this.apiUrl}/${currentUser.user.id}/preferences`,
-      { notificationPreferences: preferences },
-      { headers: this.getAuthHeaders() }
+      preferencesToSend,
+      { 
+        headers: this.getAuthHeaders(),
+        observe: 'response' // Get full response including status and headers
+      }
     ).pipe(
+      tap(response => {
+        console.log('Preferences saved successfully:', response);
+        // Update the current user in auth service if needed
+        if (response.body?.data) {
+          const updatedUser = { ...currentUser };
+          updatedUser.user = {
+            ...updatedUser.user,
+            notification_preferences: preferences // Store as object in memory
+          };
+          this.authService['updateCurrentUser'](updatedUser.user);
+        }
+      }),
+      map(response => response.body), // Return just the body for the component
       catchError(error => {
         console.error('Error updating preferences:', error);
-        return throwError(() => error);
+        return throwError(() => ({
+          message: error.error?.message || 'Failed to update preferences',
+          error: error.error
+        }));
       })
     );
   }

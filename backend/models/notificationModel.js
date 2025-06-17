@@ -1,54 +1,66 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+const pool = require('../config/db');
 
-const Notification = sequelize.define('Notification', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  userId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'Users',
-      key: 'id'
-    }
-  },
-  title: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  message: {
-    type: DataTypes.TEXT,
-    allowNull: false
-  },
-  type: {
-    type: DataTypes.ENUM('email', 'in_app', 'push'),
-    allowNull: false
-  },
-  status: {
-    type: DataTypes.ENUM('unread', 'read', 'deleted'),
-    defaultValue: 'unread'
-  },
-  relatedEntity: {
-    type: DataTypes.STRING
-  },
-  relatedEntityId: {
-    type: DataTypes.INTEGER
-  },
-  scheduledAt: {
-    type: DataTypes.DATE
-  },
-  sentAt: {
-    type: DataTypes.DATE
+class Notification {
+  static async create(notificationData) {
+    const [result] = await pool.execute(
+      `INSERT INTO notifications 
+       (user_id, title, message, type, status, related_entity, related_entity_id, scheduled_at, sent_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NOW(), NOW())`,
+      [
+        notificationData.userId,
+        notificationData.title,
+        notificationData.message,
+        notificationData.type || 'email',
+        notificationData.status || 'unread',
+        notificationData.relatedEntity || null,
+        notificationData.relatedEntityId || null,
+        notificationData.scheduledAt || null
+      ]
+    );
+    
+    return this.findById(result.insertId);
   }
-}, {
-  timestamps: true,
-  indexes: [
-    { fields: ['userId', 'status'] },
-    { fields: ['scheduledAt', 'status'] }
-  ]
-});
+
+  static async findById(id) {
+    const [rows] = await pool.execute(
+      'SELECT * FROM notifications WHERE id = ?',
+      [id]
+    );
+    return rows[0];
+  }
+
+  static async findByUserId(userId, status = null) {
+    let query = 'SELECT * FROM notifications WHERE user_id = ?';
+    const params = [userId];
+    
+    if (status) {
+      query += ' AND status = ?';
+      params.push(status);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const [rows] = await pool.execute(query, params);
+    return rows;
+  }
+
+  static async updateStatus(id, status) {
+    await pool.execute(
+      'UPDATE notifications SET status = ?, updated_at = NOW() WHERE id = ?',
+      [status, id]
+    );
+    return this.findById(id);
+  }
+
+  static async findDueForSending() {
+    const [rows] = await pool.execute(
+      `SELECT * FROM notifications 
+       WHERE (scheduled_at IS NULL OR scheduled_at <= NOW()) 
+       AND status = 'unread'
+       AND (type = 'email' OR type IS NULL)`
+    );
+    return rows;
+  }
+}
 
 module.exports = Notification;

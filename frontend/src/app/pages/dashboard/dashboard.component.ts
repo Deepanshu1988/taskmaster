@@ -48,17 +48,31 @@ export class DashboardComponent implements OnInit {
     const modalRef = this.modalService.open(NotificationSettingsComponent, {
       size: 'lg',
       windowClass: 'notification-settings-modal',
-      backdrop: 'static'
+      backdrop: 'static',
+      keyboard: false
     });
+    
+    // Store the modal reference
+    this.currentModalRef = modalRef;
     
     modalRef.result.then(
       (result) => {
         console.log('Notification settings saved:', result);
+        // You can add any success handling here if needed
+        if (result === 'saved') {
+          // Reload user preferences if needed
+          this.loadUserPreferences();
+        }
       },
       (reason) => {
-        console.log('Modal dismissed:', reason);
+        console.log('Modal dismissed: user dismissed the modal', reason);
       }
-    );
+    ).finally(() => {
+      this.currentModalRef = null;
+    });
+  }
+  loadUserPreferences() {
+    throw new Error('Method not implemented.');
   }
   openAddDepartmentModal() {
     const modalRef = this.modalService.open(DepartmentManagementComponent, {
@@ -318,7 +332,9 @@ async loadProjects() {
         username: user.username || user.email,
         email: user.email,
         role: user.role || 'user',
-        status: user.status || 'active'
+        status: user.status || 'active',
+        departmentId: user.departmentId || user.department || undefined,
+        department: user.department
       }));
   
       console.log('Mapped users:', this.users);
@@ -578,7 +594,12 @@ async loadProjects() {
   }
 
   dismissModal() {
-    this.modalService.dismissAll();
+    if (this.currentModalRef) {
+      this.currentModalRef.dismiss('User dismissed the modal');
+      this.currentModalRef = null;
+    } else if (this.modalService.hasOpenModals()) {
+      this.modalService.dismissAll('User dismissed the modal');
+    }
   }
 
   updateStats() {

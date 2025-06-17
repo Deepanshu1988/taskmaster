@@ -59,8 +59,6 @@ export class NotificationSettingsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.settingsForm = this.createForm();
-    this.emailGroup = this.settingsForm.get('email') as FormGroup;  // Initialize emailGroup
     this.loadUserPreferences();
   }
 
@@ -70,20 +68,48 @@ export class NotificationSettingsComponent implements OnInit, OnDestroy {
   }
 
   private loadUserPreferences() {
-    this.userService.getCurrentUser().subscribe({
-      next: (user: { notificationPreferences: { email: any; in_app: any; push: any; }; }) => {
+    this.isLoading = true;
+    
+    // Initialize the form if it doesn't exist
+    if (!this.settingsForm) {
+      this.settingsForm = this.createForm();
+    }
+
+    this.userService.getCurrentUser().pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (user: { notificationPreferences?: { email?: any; in_app?: any; push?: any; }; }) => {
         if (user?.notificationPreferences) {
-          this.settingsForm.patchValue({
-            email: user.notificationPreferences.email || this.defaultPreferences.email,
-            in_app: user.notificationPreferences.in_app || this.defaultPreferences.in_app,
-            push: user.notificationPreferences.push || this.defaultPreferences.push
-          });
+          // Patch each section individually to avoid overwriting the entire form
+          const { email, in_app, push } = user.notificationPreferences;
+          
+          if (email) {
+            this.settingsForm.get('email')?.patchValue({
+              ...email,
+              enabled: email.enabled !== false // Default to true if not specified
+            });
+          }
+          
+          if (in_app) {
+            this.settingsForm.get('in_app')?.patchValue({
+              ...in_app,
+              enabled: in_app.enabled !== false // Default to true if not specified
+            });
+          }
+          
+          if (push) {
+            this.settingsForm.get('push')?.patchValue({
+              ...push,
+              enabled: push.enabled === true // Default to false if not specified
+            });
+          }
         }
         this.isLoading = false;
       },
       error: (error: any) => {
         console.error('Error loading user preferences:', error);
         this.isLoading = false;
+        this.notificationService.showError('Failed to load notification preferences');
       }
     });
   }
@@ -134,24 +160,72 @@ get pushMentions(): FormControl {
 }
 
   private createForm(): FormGroup {
-    return this.fb.group({
+    const form = this.fb.group({
       email: this.fb.group({
         enabled: [true],
-        taskReminders: [true],
-        dueDateAlerts: [true],  // Make sure this matches exactly with template
-        statusUpdates: [true]
+        taskReminders: [{value: true, disabled: false}],
+        dueDateAlerts: [{value: true, disabled: false}],
+        statusUpdates: [{value: true, disabled: false}]
       }),
       in_app: this.fb.group({
         enabled: [true],
-        taskReminders: [true],
-        mentions: [true],
-        statusUpdates: [true]
+        taskReminders: [{value: true, disabled: false}],
+        mentions: [{value: true, disabled: false}],
+        statusUpdates: [{value: true, disabled: false}]
       }),
       push: this.fb.group({
         enabled: [false],
-        taskReminders: [false],
-        mentions: [false]
+        taskReminders: [{value: false, disabled: true}],
+        mentions: [{value: false, disabled: true}]
       })
+    });
+
+    // Store reference to email form group
+    this.emailGroup = form.get('email') as FormGroup;
+
+    // Set up value changes for toggling disabled states
+    this.setupFormValueChanges(form);
+
+    return form;
+  }
+
+  private setupFormValueChanges(form: FormGroup): void {
+    // Handle email group
+    const emailGroup = form.get('email') as FormGroup;
+    emailGroup.get('enabled')?.valueChanges.subscribe(enabled => {
+      const controls = ['taskReminders', 'dueDateAlerts', 'statusUpdates'];
+      this.toggleControlsState(emailGroup, controls, enabled);
+    });
+
+    // Handle in_app group
+    const inAppGroup = form.get('in_app') as FormGroup;
+    inAppGroup.get('enabled')?.valueChanges.subscribe(enabled => {
+      const controls = ['taskReminders', 'mentions', 'statusUpdates'];
+      this.toggleControlsState(inAppGroup, controls, enabled);
+    });
+
+    // Handle push group
+    const pushGroup = form.get('push') as FormGroup;
+    pushGroup.get('enabled')?.valueChanges.subscribe(enabled => {
+      const controls = ['taskReminders', 'mentions'];
+      this.toggleControlsState(pushGroup, controls, enabled);
+    });
+  }
+
+  private toggleControlsState(
+    group: FormGroup,
+    controlNames: string[],
+    enabled: boolean
+  ): void {
+    controlNames.forEach(controlName => {
+      const control = group.get(controlName);
+      if (control) {
+        if (enabled) {
+          control.enable();
+        } else {
+          control.disable();
+        }
+      }
     });
   }
 
@@ -204,27 +278,60 @@ get pushMentions(): FormControl {
     if (this.settingsForm.invalid || this.isSaving) {
       return;
     }
-  
+
     this.isSaving = true;
+    const preferences = this.settingsForm.getRawValue();
     
-    // Get the form values
-    const preferences = this.settingsForm.value;
+    console.log('Saving preferences:', preferences);
   
     this.userService.updateNotificationPreferences(preferences)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response: any) => {
+          console.log('Save successful, response:', response);
           this.isSaving = false;
+          
           // Show success message
           this.notificationService.showSuccess('Notification preferences saved successfully');
           
+          // Update the form with the saved preferences from the response
+          const savedPrefs = response?.data?.notification_preferences || response?.notificationPreferences;
+          
+          if (savedPrefs) {
+            // Parse if it's a string
+            const prefs = typeof savedPrefs === 'string' ? JSON.parse(savedPrefs) : savedPrefs;
+            
+            this.settingsForm.patchValue({
+              email: {
+                ...(prefs.email || this.defaultPreferences.email),
+                enabled: prefs.email?.enabled ?? true
+              },
+              in_app: {
+                ...(prefs.in_app || this.defaultPreferences.in_app),
+                enabled: prefs.in_app?.enabled ?? true
+              },
+              push: {
+                ...(prefs.push || this.defaultPreferences.push),
+                enabled: prefs.push?.enabled ?? false
+              }
+            }, { emitEvent: false });
+          }
+          
           // Mark form as pristine since we just saved
           this.settingsForm.markAsPristine();
+          
+          // Close the modal after a short delay to show the success message
+          setTimeout(() => {
+            this.dismissModal();
+          }, 500);
         },
         error: (error: any) => {
           console.error('Error saving notification preferences:', error);
           this.isSaving = false;
-          this.notificationService.showError('Failed to save notification preferences');
+          
+          // Show error message to user
+          const errorMessage = error?.message || 'Failed to save notification preferences';
+          this.notificationService.showError(errorMessage);
         }
       });
   }

@@ -5,7 +5,7 @@ import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
-import { MatSnackBarModule } from '@angular/material/snack-bar';
+//import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { AppComponent } from './app.component';
 import { LoginComponent } from './pages/login/login.component';
 import { TasksComponent } from './pages/tasks/tasks.component';
@@ -53,20 +53,14 @@ import { DepartmentManagementComponent } from './pages/department-management/dep
     BrowserAnimationsModule,
     NgbModule,
     ProjectsModule,
-    ToastrModule.forRoot({
-      timeOut: 3000,
-      positionClass: 'toast-top-right',
-      preventDuplicates: true,
-      progressBar: true,
-      closeButton: true
-    }),
+    ToastrModule.forRoot(),
     GanttModule,
     DashboardModule,
     AuthModule,
     TasksModule,
     SettingsModule,
     NotificationsModule,
-    MatSnackBarModule
+    //MatSnackBarModule
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
