@@ -102,24 +102,67 @@
   color: #64748b;
 }
 
-.task-progress {
-  height: 8px;
-  background: #e2e8f0;
-  border-radius: 4px;
+/* Progress Bar Styles */
+.progress {
+  background-color: #f0f0f0;
+  border-radius: 12px;
   overflow: hidden;
-  margin-top: 0.5rem;
+  height: 24px;
+  min-width: 120px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+  position: relative;
 }
 
-.task-progress-bar {
-  height: 100%;
-  background: var(--primary-color);
-  transition: width 0.6s ease;
-}
-
-.task-actions {
+.progress-bar {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: width 0.4s ease-in-out, background-color 0.3s ease;
+  height: 100%;
+  border-radius: 12px;
+}
+
+/* Progress bar colors based on progress percentage */
+.bg-danger { 
+  background-color: #dc3545 !important;
+  background-image: linear-gradient(135deg, #dc3545, #c82333) !important;
+}
+
+.bg-warning { 
+  background-color: #ffc107 !important;
+  background-image: linear-gradient(135deg, #ffc107, #e0a800) !important;
+  color: #000 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+.bg-success { 
+  background-color: #28a745 !important;
+  background-image: linear-gradient(135deg, #28a745, #1e7e34) !important;
+}
+
+/* Progress text styles */
+.progress-text {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Hover effect for progress bars */
+.progress-bar:hover {
+  opacity: 0.9;
+}
+
+/* Make sure the progress bar container has enough space */
+.table td {
+  vertical-align: middle;
+  padding: 0.75rem 0.5rem !important;
 }
 
 /* Task Status Badges */
@@ -174,6 +217,71 @@
   padding: 2rem;
 }
 
+/* Action Buttons */
+.btn-group {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-group .btn {
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+/* Edit Button */
+.btn-outline-primary {
+  color: #0d6efd;
+  border: 1px solid #0d6efd;
+}
+
+.btn-outline-primary:hover {
+  background-color: #0d6efd;
+  color: white;
+}
+
+/* Complete Button */
+.btn-outline-success {
+  color: #198754;
+  border: 1px solid #198754;
+}
+
+.btn-outline-success:hover {
+  background-color: #198754;
+  color: white;
+}
+
+/* Delete Button */
+.btn-outline-danger {
+  color: #dc3545;
+  border: 1px solid #dc3545;
+}
+
+.btn-outline-danger:hover {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Ensure icons are properly sized */
+.btn i {
+  font-size: 0.9rem;
+  width: 1rem;
+  height: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Make sure the action column is wide enough */
+.table td:last-child {
+  white-space: nowrap;
+  width: 140px; /* Adjust width as needed */
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .tasks-header {
@@ -197,4 +305,23 @@
   .task-meta {
     flex-wrap: wrap;
   }
+  
+  .btn-group {
+    flex-wrap: nowrap;
+  }
+  
+  .btn-group .btn {
+    padding: 0.3rem 0.4rem;
+    font-size: 0.75rem;
+  }
+  
+  .table td:last-child {
+    width: auto;
+  }
+  
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
 }

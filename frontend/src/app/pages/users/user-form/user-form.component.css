@@ -1,0 +1,42 @@
+/* frontend/src/app/pages/tasks/task-list.component.css */
+.list-group-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .list-group-item:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .badge {
+    font-size: 0.8em;
+    padding: 0.35em 0.65em;
+  }
+  
+  .card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .comment-input {
+    border-top: 1px solid #eee;
+    padding-top: 1rem;
+    margin-top: 1rem;
+  }
+
+  /* In user-form.component.css */
+.status-field {
+  margin-bottom: 1.5rem;
+}
+
+.status-field label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.status-field select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+}

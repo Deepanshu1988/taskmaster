@@ -10,8 +10,11 @@ import { ProjectService } from '../../services/project.service';
 import { Project } from '../../models/project.model';
 import { UserService } from '../../services/user.service';
 import { User } from '../../models/user.model';
-import { firstValueFrom } from 'rxjs';
-
+import { catchError, firstValueFrom, of } from 'rxjs';
+import { DepartmentManagementComponent } from '../department-management/department-management.component';
+import { ToastrModule } from 'ngx-toastr';
+//import { ToastrService } from 'ngx-toastr';
+import { NotificationSettingsComponent } from '../settings/notification-settings/notification-settings.component';
 interface StatCard {
   title: string;
   value: string;
@@ -33,14 +36,53 @@ interface TaskWithProject extends Task {
     RouterModule,
     NgClass,
     FormsModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    ToastrModule
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit {
+  toastr: any;
+  openNotificationSettingsModal() {
+    const modalRef = this.modalService.open(NotificationSettingsComponent, {
+      size: 'lg',
+      windowClass: 'notification-settings-modal',
+      backdrop: 'static'
+    });
+    
+    modalRef.result.then(
+      (result) => {
+        console.log('Notification settings saved:', result);
+      },
+      (reason) => {
+        console.log('Modal dismissed:', reason);
+      }
+    );
+  }
+  openAddDepartmentModal() {
+    const modalRef = this.modalService.open(DepartmentManagementComponent, {
+      size: 'lg',
+      windowClass: 'department-modal',
+      backdrop: 'static'
+    });
+  
+    // Handle the modal result
+    modalRef.result.then(
+      (result) => {
+        if (result === 'saved') {
+          this.toastr.success('Department saved successfully!');
+        }
+      },
+      (reason) => {
+        // Handle dismiss
+        console.log('Modal dismissed:', reason);
+      }
+    );
+  }
   @ViewChild('addTaskModal') addTaskModal!: TemplateRef<any>;
   @ViewChild('addProjectModal') addProjectModal!: TemplateRef<any>;
+  @ViewChild('addUserModal') addUserModal!: TemplateRef<any>;
 
   tasks: TaskWithProject[] = [];
   recentTasks: TaskWithProject[] = [];
@@ -50,38 +92,60 @@ export class DashboardComponent implements OnInit {
   stats: StatCard[] = [
     { title: 'Total Tasks', value: '0', color: 'bg-primary', icon: 'fa-tasks' },
     { title: 'Completed', value: '0', color: 'bg-success', icon: 'fa-check-circle' },
-    { title: 'In Progress', value: '0', color: 'bg-warning', icon: 'fa-spinner' }
+    { title: 'In Progress', value: '0', color: 'bg-warning', icon: 'fa-spinner' },
+    //{ title: 'Pending', value: '0', color: 'bg-warning', icon: 'fa-clock' },
   ];
 
-  quickActions: {
-    icon: string;
-    title: string;
-    description: string;
-    buttonText: string;
-    onClick: () => void;
-  }[] = [
-    {
-      icon: 'fas fa-tasks',
-      title: 'Add Task',
-      description: 'Create a new task',
-      buttonText: 'Add Task',
-      onClick: () => this.openAddTaskModal()
-    },
-    {
-      icon: 'fas fa-project-diagram',
-      title: 'Add Project',
-      description: 'Create a new project',
-      buttonText: 'Add Project',
-      onClick: () => this.openAddProjectModal()
-    },
-    {
-      icon: 'fas fa-user-plus',
-      title: 'Add User',
-      description: 'Create a new user',
-      buttonText: 'Add User',
-      onClick: () => this.openAddUserModal()
-    }
-  ];
+  get quickActions() {
+    const allActions = [
+      {
+        icon: 'fas fa-tasks',
+        title: 'Add Task',
+        description: 'Create a new task',
+        buttonText: 'Add Task',
+        onClick: () => this.openAddTaskModal(),
+        adminOnly: true // Regular users can add tasks
+      },
+      {
+        icon: 'fas fa-project-diagram',
+        title: 'Add Project',
+        description: 'Create a new project',
+        buttonText: 'Add Project',
+        onClick: () => this.openAddProject(),
+        adminOnly: true // Only admins can add projects
+      },
+      {
+        icon: 'fas fa-user-plus',
+        title: 'Add User',
+        description: 'Create a new user',
+        buttonText: 'Add User',
+        onClick: () => this.openAddUserModal(),
+        adminOnly: true // Only admins can add users
+      },
+      
+     {
+        icon: 'fas fa-user-plus',
+        title: 'Add Department',
+        description: 'Create a new department',
+        buttonText: 'Add Department',
+        onClick: () => this.openAddDepartmentModal(),
+        adminOnly: true // Only admins can add users
+      },
+     {
+        icon: 'fas fa-bell',
+        title: 'Notification Settings',
+        description: 'Manage notification preferences',
+        buttonText: 'Notification Settings',
+        onClick: () => this.openNotificationSettingsModal(),
+        adminOnly: true // Only admins can access notification settings
+      }
+    ];
+  
+    // If user is admin, show all actions, otherwise filter out admin-only actions
+    return this.isAdmin 
+      ? allActions 
+      : allActions.filter(action => !action.adminOnly);
+  }
 
   taskForm!: FormGroup;
   editMode = false;
@@ -109,6 +173,9 @@ export class DashboardComponent implements OnInit {
   teamMembers: User[] = [];
 
   currentModalRef: NgbModalRef | null = null;
+ // toastr!: ToastrService;
+  isAdmin: boolean | undefined;
+  currentUserId: any;
 
   constructor(
     private fb: FormBuilder,
@@ -117,7 +184,8 @@ export class DashboardComponent implements OnInit {
     private projectService: ProjectService,
     private authService: AuthService,
     private userService: UserService,
-    private router: Router
+    private router: Router,
+    //private toastr: ToastrService
   ) {
     // Initialize forms
     this.taskForm = this.fb.group({
@@ -127,7 +195,7 @@ export class DashboardComponent implements OnInit {
       assigned_to: ['', Validators.required],
       priority: ['medium', Validators.required],
       status: ['pending', Validators.required],
-      dueDate: ['', [Validators.required, this.futureDateValidator()]],
+      dueDate: [null],
       progress: [0, [
         Validators.required, 
         Validators.min(0), 
@@ -158,37 +226,36 @@ export class DashboardComponent implements OnInit {
     };
   }
 
-  async ngOnInit(): Promise<void> {
-    try {
-      // Load all required data in parallel
-      await Promise.all([
-        this.loadUsers(),
-        this.loadProjects()
-      ]);
-      
-      // Load tasks after users and projects are loaded
-      await this.loadTasks();
-    } catch (error) {
-      console.error('Error initializing dashboard:', error);
-    }
+  // In dashboard.component.ts
+  ngOnInit(): void {
+    // Set isAdmin based on current user's role
+    const currentUser = this.authService.currentUserValue;
+    console.log('Current user in dashboard:', currentUser); // Debug log
+    this.isAdmin = currentUser ? (currentUser.user?.role === 'admin' || currentUser.role === 'admin') : false;
+    console.log('Is admin in dashboard:', this.isAdmin); // Debug log
+    
+    // Load your data
+    this.loadTasks();
+    this.loadProjects();
+    this.loadUsers();
   }
 
   async loadTasks() {
     try {
+      // First, ensure projects are loaded
+      if (this.projects.length === 0) {
+        await this.loadProjects();
+      }
+  
+      // Load tasks
       const tasks = await firstValueFrom(this.taskService.getTasks());
       
-      // Map project and format dates for all tasks
+      // Map project to each task
       this.tasks = tasks.map(task => {
-        const taskWithProject: TaskWithProject = {
+        const taskWithProject: TaskWithProject = { 
           ...task,
           project: this.projects.find(p => p.id === task.project_id?.toString())
         };
-        
-        // Format the due date if it exists
-        if (task.dueDate) {
-          taskWithProject.dueDate = this.formatDate(task.dueDate);
-        }
-        
         return taskWithProject;
       });
       
@@ -202,38 +269,58 @@ export class DashboardComponent implements OnInit {
       console.error('Error loading tasks:', error);
     }
   }
-
-  async loadProjects() {
-    try {
-      const projects = await firstValueFrom(this.projectService.getProjects());
-      this.projects = projects;
-    } catch (error) {
-      console.error('Error loading projects:', error);
-    }
+  
+// Add this method in your DashboardComponent class
+formatDueDate(due_date: string | null): string {
+  if (!due_date) return 'No due date';
+  try {
+    const date = new Date(due_date);
+    return isNaN(date.getTime()) ? 'Invalid date' : date.toLocaleDateString();
+  } catch (e) {
+    return 'Invalid date';
   }
+}
+async loadProjects() {
+  try {
+    console.log('Loading projects...');
+    const projects = await firstValueFrom(this.projectService.getProjects());
+    console.log('Projects loaded:', projects);
+    this.projects = projects;
+  } catch (error) {
+    console.error('Error loading projects:', error);
+    this.toastr.error('Failed to load projects');
+  }
+}
 
   async loadUsers() {
     try {
       console.log('Fetching users...');
-      
-      // Fetch all users
-      const allUsers = await firstValueFrom(this.userService.getUsers());
-      console.log('Users from API:', allUsers);
-      
+      const allUsers = await firstValueFrom(
+        this.userService.getUsers().pipe(
+          catchError(error => {
+            if (error.status === 403) {
+              console.log('User does not have permission to view all users');
+              return of([]); // Return empty array if not authorized
+            }
+            throw error; // Re-throw other errors
+          })
+        )
+      );
+  
       if (!Array.isArray(allUsers)) {
         console.error('Expected users array but got:', typeof allUsers);
         return;
       }
-      
+  
       // Map the API response to our User model
       this.users = allUsers.map(user => ({
         id: user.id,
-        username: user.username || user.email, // Fallback to email if username is not available
+        username: user.username || user.email,
         email: user.email,
-        role: user.role || 'user', // Default to 'user' role if not specified
+        role: user.role || 'user',
         status: user.status || 'active'
       }));
-      
+  
       console.log('Mapped users:', this.users);
       
       // Filter users by role for the dropdown
@@ -242,12 +329,9 @@ export class DashboardComponent implements OnInit {
       
       console.log('Managers:', this.managers);
       console.log('Team Members:', this.teamMembers);
-      
     } catch (error: any) {  
       console.error('Error loading users:', error);
-      if (error?.status === 403) {
-        console.error('Access denied. Only admins can view users.');
-      }
+      // No need for additional error handling here as we're already handling 403
     }
   }
 
@@ -307,6 +391,12 @@ export class DashboardComponent implements OnInit {
   openAddUserModal() {
     // TODO: Implement user modal opening
     console.log('Open add user modal');
+   this.router.navigate(['/users/new']);
+  }
+
+  openAddProject() {
+    console.log('Opening project form...');
+    this.router.navigate(['/projects/new']);
   }
 
   createTask() {
@@ -365,16 +455,31 @@ export class DashboardComponent implements OnInit {
     if (this.projectForm.valid) {
       try {
         const formData = this.projectForm.value;
-        if (this.editProjectMode && this.selectedProject) {
-          await this.projectService.updateProject(this.selectedProject.id, formData);
+        console.log('Saving project with data:', formData);
+        
+        if (this.editProjectMode && this.selectedProject?.id) {
+          console.log('Updating project with ID:', this.selectedProject.id);
+          const updatedProject = await this.projectService
+            .updateProject(this.selectedProject.id.toString(), formData)
+            .toPromise();
+          console.log('Project updated:', updatedProject);
         } else {
-          await this.projectService.createProject(formData);
+          console.log('Creating new project');
+          const newProject = await this.projectService
+            .createProject(formData)
+            .toPromise();
+          console.log('Project created:', newProject);
         }
+        
         this.modalService.dismissAll();
         await this.loadProjects();
       } catch (error) {
         console.error('Error saving project:', error);
+        // You might want to show an error message to the user here
       }
+    } else {
+      console.log('Form is invalid:', this.projectForm.errors);
+      // You might want to show validation errors to the user here
     }
   }
 
@@ -429,7 +534,7 @@ export class DashboardComponent implements OnInit {
           project_id: Number(this.taskForm.value.projectId),
           assigned_to: Number(this.taskForm.value.assigned_to),
           // Convert date to ISO string
-          dueDate: new Date(this.taskForm.value.dueDate).toISOString(),
+          due_date: this.taskForm.value.dueDate ? new Date(this.taskForm.value.dueDate).toISOString() : null,
           // Ensure progress is a number
           progress: Number(this.taskForm.value.progress)
         };

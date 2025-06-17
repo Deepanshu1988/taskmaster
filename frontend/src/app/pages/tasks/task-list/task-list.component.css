@@ -1,0 +1,206 @@
+/* frontend/src/app/components/task-list/task-list.component.css */
+.list-group-item {
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .list-group-item:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .list-group-item.active {
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+    color: #212529;
+  }
+  
+  .comments-section {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+  }
+  
+  .comment {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.25rem;
+    background-color: #f8f9fa;
+  }
+  
+  .comment:last-child {
+    margin-bottom: 0;
+  }
+  
+  .task-priority-high {
+    border-left: 4px solid #dc3545;
+  }
+  
+  .task-priority-medium {
+    border-left: 4px solid #ffc107;
+  }
+  
+  .task-priority-low {
+    border-left: 4px solid #28a745;
+  }
+
+.task-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+  border-left: 4px solid transparent;
+  height: 100%;
+}
+
+.task-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+.comments-section {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.comment {
+  border-left: 3px solid #0d6efd;
+  background-color: #f8f9fa;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.badge {
+  font-weight: 500;
+  padding: 0.4em 0.8em;
+  font-size: 0.8em;
+}
+
+.bg-primary { background-color: #0d6efd !important; }
+.bg-success { background-color: #198754 !important; }
+.bg-warning { background-color: #ffc107 !important; color: #000 !important; }
+.bg-danger { background-color: #dc3545 !important; }
+.bg-info { background-color: #0dcaf0 !important; }
+.bg-secondary { background-color: #6c757d !important; }
+
+/* Active task card */
+.task-card.border-primary {
+  border-left-color: #0d6efd;
+  background-color: rgba(13, 110, 253, 0.03);
+}
+
+/* Time duration display */
+.time-duration {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  color: #0d6efd;
+  background-color: rgba(13, 110, 253, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+/* Active timer alert */
+.alert-warning {
+  background-color: #fff3cd;
+  border-color: #ffeeba;
+  color: #856404;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .task-card {
+    margin-bottom: 1rem;
+  }
+  
+  .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Animation for active timer */
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.active-timer {
+  animation: pulse 2s infinite;
+}
+
+/* Hover effects */
+.btn-outline-primary:hover {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.btn-outline-success:hover {
+  background-color: #198754;
+  color: white;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
+.btn-danger:hover {
+  background-color: #bb2d3b;
+  border-color: #b02a37;
+}
+
+/* Task title link */
+.task-title-link {
+  color: #212529;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.task-title-link:hover {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+/* Empty state */
+.empty-state {
+  color: #6c757d;
+  padding: 3rem 0;
+}
+
+.empty-state i {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.7;
+}
+
+/* Card hover effect */
+.card {
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Status indicators */
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+.status-pending { background-color: #6c757d; }
+.status-in_progress { background-color: #ffc107; }
+.status-completed { background-color: #198754; }

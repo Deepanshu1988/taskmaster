@@ -4,7 +4,8 @@ import { HTTP_INTERCEPTORS} from '@angular/common/http';
 import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-
+import { HttpClientModule } from '@angular/common/http';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { AppComponent } from './app.component';
 import { LoginComponent } from './pages/login/login.component';
 import { TasksComponent } from './pages/tasks/tasks.component';
@@ -15,18 +16,32 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { AuthService } from './services/auth.service';
 import { AuthGuard } from './guards/auth.guard';
+import { AdminGuard } from './guards/admin.guard';
 import { AuthInterceptor } from './interceptors/auth.interceptor';
-import { HttpClientModule } from '@angular/common/http';
-import { ProjectService } from './services/project.service'; // assuming this is the correct import path
-import { TaskService } from './services/task.service'; // assuming this is the correct import path
-
+import { ProjectService } from './services/project.service'; 
+import { TaskService } from './services/task.service'; 
+import { ProjectsModule } from './pages/projects/projects.module';
+import { TruncatePipe } from './pipes/truncate.pipe';
+import { TaskListComponent } from './pages/tasks/task-list/task-list.component';
+import { UserService } from './services/user.service';
+import { ToastrModule } from 'ngx-toastr';
+import { GanttModule } from 'ngx-gantt';
+import { DashboardModule } from './pages/dashboard/dashboard.module';
+import { AuthModule } from './pages/auth/auth.module';
+import { TasksModule } from './pages/tasks/tasks.module';
+import { SettingsModule } from './pages/settings/settings.module';
+import { NotificationsModule } from './pages/notifications/notifications.module';
+import { DepartmentManagementComponent } from './pages/department-management/department-management.component';
 @NgModule({
   declarations: [
     AppComponent,
     LoginComponent,
     TasksComponent,
     UsersComponent,
-    DashboardComponent
+    DashboardComponent,
+    TruncatePipe,
+    TaskListComponent,
+    DepartmentManagementComponent
   ],
   imports: [
     BrowserModule,
@@ -36,15 +51,33 @@ import { TaskService } from './services/task.service'; // assuming this is the c
     HttpClientModule,
     RouterModule.forRoot(routes, { useHash: true }),
     BrowserAnimationsModule,
-    NgbModule
+    NgbModule,
+    ProjectsModule,
+    ToastrModule.forRoot({
+      timeOut: 3000,
+      positionClass: 'toast-top-right',
+      preventDuplicates: true,
+      progressBar: true,
+      closeButton: true
+    }),
+    GanttModule,
+    DashboardModule,
+    AuthModule,
+    TasksModule,
+    SettingsModule,
+    NotificationsModule,
+    MatSnackBarModule
   ],
   providers: [
+    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
     AuthService,
-    TaskService,
-    ProjectService,
     AuthGuard,
-    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }
+    AdminGuard,
+    ProjectService,
+    TaskService,
+    UserService
   ],
-  bootstrap: [AppComponent]
+  bootstrap: [AppComponent],
+  //entryComponents: [DepartmentManagementComponent]
 })
 export class AppModule { }

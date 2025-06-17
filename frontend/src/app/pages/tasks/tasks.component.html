@@ -1,25 +1,78 @@
 <div class="container-fluid tasks-container">
   <!-- Header Section -->
-  <div class="tasks-header">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="mb-0">Tasks</h2>
-      <div class="d-flex gap-2">
-        <div class="input-group">
-          <input type="text" class="form-control" placeholder="Search tasks..." [(ngModel)]="searchQuery">
-          <button class="btn btn-outline-secondary" type="button">
-            <i class="fas fa-search"></i>
-          </button>
-        </div>
-        <button class="btn btn-primary" (click)="openAddTaskModal()">
-          <i class="fas fa-plus">New Task</i> 
+  <div class="tasks-header mb-4">
+    <div class="row g-3">
+    <div class="col-12 col-md-4 mb-2 mb-md-0">
+      <h2 class="mb-0">Tasks Management</h2>
+    </div>
+    <div class="col-12 col-md-8">
+      <div class="d-flex flex-column flex-md-row gap-2">
+          <div class="position-relative flex-grow-1">
+            <span class="position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d;">
+              <i class="fas fa-search"></i>
+            </span>
+            <input 
+              type="text" 
+              class="form-control ps-5 w-100" 
+              placeholder="Search tasks..." 
+              [(ngModel)]="searchQuery" 
+              (input)="filterTasks()"
+              style="border-radius: 20px;"
+            >
+          </div>
+        <button class="btn btn-primary flex-shrink-0 d-inline-flex align-items-center justify-content-center" (click)="openAddTaskModal()">
+          <i class="fas fa-plus me-2"></i>Add Task
         </button>
       </div>
     </div>
+    </div>
   </div>
+  <!-- Task Counts Dashboard -->
+  <!--<div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card bg-primary text-white mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="card-title mb-0">Pending Tasks</h6>
+              <h2 class="mb-0">{{ taskCounts.pending || 0 }}</h2>
+            </div>
+            <i class="fas fa-clock fa-2x opacity-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card bg-warning text-white mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="card-title mb-0">In Progress</h6>
+              <h2 class="mb-0">{{ taskCounts.in_progress || 0 }}</h2>
+            </div>
+            <i class="fas fa-spinner fa-2x opacity-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card bg-success text-white mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="card-title mb-0">Completed</h6>
+              <h2 class="mb-0">{{ taskCounts.completed || 0 }}</h2>
+            </div>
+            <i class="fas fa-check-circle fa-2x opacity-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>-->
 
   <!-- Task Filters -->
   <div class="task-filters mb-4">
-    <div class="row">
+    <div class="row g-2">
       <div class="col-md-3">
         <select class="form-select" [(ngModel)]="selectedStatus" (change)="filterTasks()">
           <option value="">All Statuses</option>
@@ -88,6 +141,7 @@
                     </div>
                   </td>
                   <td>{{task.project?.name || 'No project'}}</td>
+                  
                   <td>
                     <div class="d-flex align-items-center">
                       <div class="avatar me-2">
@@ -114,14 +168,21 @@
                       {{task.priority | titlecase}}
                     </span>
                   </td>
-                  <td>{{task.dueDate | date}}</td>
+                 <!-- <td>{{ task | json }}</td>-->
+                  <td>{{ task.due_date ? (task.due_date | date) : 'No due date' }}</td>
                   <td>
-                    <div class="progress" style="height: 8px;">
-                      <div class="progress-bar" role="progressbar" 
-                           [style.width.%]="task.progress"
-                           [ngClass]="{'bg-danger': task.progress < 30, 'bg-warning': task.progress < 70, 'bg-success': task.progress >= 70}">
-                        {{task.progress}}%
+                    <div class="progress" style="height: 24px; border-radius: 12px; background-color: #f0f0f0; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+                      <div class="progress-bar d-flex align-items-center justify-content-end pe-2 fw-medium" 
+                           role="progressbar" 
+                           [style.width.%]="task.progress || 0"
+                           [ngClass]="{
+                             'bg-danger': (task.progress || 0) < 30, 
+                             'bg-warning': (task.progress || 0) >= 30 && (task.progress || 0) < 70, 
+                             'bg-success': (task.progress || 0) >= 70
+                           }">
+                        <span class="progress-text">{{ (task.progress || 0) | number:'1.0-0' }}%</span>
                       </div>
+                      <span *ngIf="!task.progress" class="position-absolute start-0 ps-2 text-muted small">0%</span>
                     </div>
                   </td>
                   <td>
@@ -132,7 +193,7 @@
                       <button class="btn btn-sm btn-outline-success" (click)="updateStatus(task, 'completed')" *ngIf="task.status !== 'completed'">
                         <i class="fas fa-check"></i>
                       </button>
-                      <button class="btn btn-sm btn-outline-danger" (click)="deleteTask(task)">
+                      <button class="btn btn-sm btn-outline-danger" (click)="deleteTask(task)" >
                         <i class="fas fa-trash"></i>
                       </button>
                     </div>
@@ -233,12 +294,21 @@
         
         <div class="mb-3">
           <label for="progress" class="form-label">Progress</label>
-          <input type="number" class="form-control" id="progress" formControlName="progress" min="0" max="100" required>
+          <input type="number" 
+                 class="form-control" 
+                 id="progress" 
+                 formControlName="progress"
+                 [value]="taskForm.get('progress')?.value"
+                 (input)="onProgressInput($event)"
+                 min="0" 
+                 max="100" 
+                 step="1"
+                 required>
           <div *ngIf="taskForm.get('progress')?.invalid && taskForm.get('progress')?.touched" class="text-danger">
             Please enter a valid progress value (0-100)
           </div>
+          <div class="form-text">Current Progress: {{ taskForm.get('progress')?.value || 0 }}%</div>
         </div>
-        
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Cancel click')" [disabled]="taskForm.disabled">
             Cancel

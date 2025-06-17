@@ -14,8 +14,11 @@
               <li class="nav-item">
                 <a class="nav-link" routerLink="/tasks" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Tasks</a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item" *ngIf="isAdmin()">
                 <a class="nav-link" routerLink="/users" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Users</a>
+              </li>
+              <li class="nav-item" *ngIf="isAdmin()">
+                <a class="nav-link" routerLink="/departments" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Departments</a>
               </li>
             </ul>
             <div class="d-flex">
@@ -25,15 +28,16 @@
           </div>
         </div>
       </nav>
-      
-      <div class="container mt-4">
-        <router-outlet></router-outlet>
-      </div>
-  
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <router-outlet></router-outlet>
+    </div>
+
     <!-- Footer -->
     <footer class="footer mt-auto py-3 bg-light"*ngIf="currentUser">
       <div class="container text-center">
-        <span class="text-muted">© 2025 TaskMaster. All rights reserved.</span>
+        <span class="text-muted"> 2025 TaskMaster. All rights reserved.</span>
       </div>
     </footer>
   </div>

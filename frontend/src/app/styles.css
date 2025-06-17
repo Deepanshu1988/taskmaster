@@ -190,3 +190,4 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+@import 'ngx-toastr/toastr';

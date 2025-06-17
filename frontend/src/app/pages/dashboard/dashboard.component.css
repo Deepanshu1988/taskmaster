@@ -293,6 +293,86 @@
   min-height: 100px;
 }
 
+/* Enhanced responsive styles */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem;
+  }
+  
+  .stat-card {
+    margin-bottom: 1rem;
+  }
+  
+  .dashboard-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  .table th, .table td {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Ensure buttons stack on mobile */
+@media (max-width: 576px) {
+  .d-flex.gap-2 {
+    flex-direction: column;
+    gap: 0.5rem !important;
+    width: 100%;
+  }
+  
+  .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  
+  .stat-card {
+    padding: 1rem;
+  }
+  
+  .stat-value {
+    font-size: 1.25rem;
+  }
+  
+  .stat-label {
+    font-size: 0.8rem;
+  }
+}
+
+/* Improve touch targets for mobile */
+.btn {
+  min-height: 38px;
+}
+
+/* Ensure table is properly scrollable on mobile */
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -1rem;
+  padding: 0 1rem;
+  width: calc(100% + 2rem);
+}
+
+/* Adjust card spacing on mobile */
+@media (max-width: 768px) {
+  .card {
+    margin-bottom: 1rem;
+  }
+  
+  .card-header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .card-body {
+    padding: 1rem;
+  }
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }

@@ -1,0 +1,160 @@
+<!-- user-form.component.html -->
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">Add New User</h4>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+            <!-- Username -->
+            <div class="mb-3">
+              <label for="username" class="form-label">Username *</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                id="username" 
+                formControlName="username"
+                [class.is-invalid]="username?.invalid && (username?.dirty || username?.touched)"
+              >
+              <div class="invalid-feedback" *ngIf="username?.errors?.['required']">
+                Username is required
+              </div>
+              <div class="invalid-feedback" *ngIf="username?.errors?.['minlength']">
+                Username must be at least 3 characters
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div class="mb-3">
+              <label for="email" class="form-label">Email *</label>
+              <input 
+                type="email" 
+                class="form-control" 
+                id="email" 
+                formControlName="email"
+                [class.is-invalid]="email?.invalid && (email?.dirty || email?.touched)"
+              >
+              <div class="invalid-feedback" *ngIf="email?.errors?.['required']">
+                Email is required
+              </div>
+              <div class="invalid-feedback" *ngIf="email?.errors?.['email']">
+                Please enter a valid email
+              </div>
+            </div>
+
+            <!-- Password -->
+            <div class="mb-3">
+              <label for="password" class="form-label">Password *</label>
+              <input 
+                type="password" 
+                class="form-control" 
+                id="password" 
+                formControlName="password"
+                [class.is-invalid]="password?.invalid && (password?.dirty || password?.touched)"
+              >
+              <div class="invalid-feedback" *ngIf="password?.errors?.['required']">
+                Password is required
+              </div>
+              <div class="invalid-feedback" *ngIf="password?.errors?.['minlength']">
+                Password must be at least 6 characters
+              </div>
+            </div>
+
+            <!-- Role -->
+            <div class="mb-3">
+              <label for="role" class="form-label">Role *</label>
+              <select 
+                class="form-select" 
+                id="role" 
+                formControlName="role"
+                [class.is-invalid]="role?.invalid && (role?.dirty || role?.touched)"
+              >
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+              <div class="invalid-feedback" *ngIf="role?.errors?.['required']">
+                Role is required
+              </div>
+            </div>
+
+            <!-- Department -->
+            <div class="mb-4">
+              <label for="department" class="form-label">Department *</label>
+              <select 
+                id="department"
+                formControlName="department" 
+                class="form-select" 
+                [class.is-invalid]="department?.invalid && (department?.dirty || department?.touched)"
+                [class.is-loading]="isLoading"
+                [disabled]="isLoading"
+              >
+                <option [ngValue]="null" disabled>Select Department</option>
+                <ng-container *ngFor="let dept of departments; trackBy: trackDepartmentById">
+                  <option [ngValue]="dept.id">
+                    {{ dept.name }}
+                  </option>
+                </ng-container>
+                <option *ngIf="departments.length === 0 && !isLoading" disabled>No departments available</option>
+              </select>
+              <div class="invalid-feedback" *ngIf="department?.invalid && (department?.dirty || department?.touched)">
+                <div *ngIf="department?.errors?.['required']">
+                  Department is required
+                </div>
+              </div>
+              <div class="text-muted small mt-1" *ngIf="isLoading">
+                <i class="fas fa-spinner fa-spin me-1"></i> Loading departments...
+              </div>
+            </div>
+
+            <!-- Status -->
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="status" class="form-label">Status</label>
+                <select 
+                  id="status"
+                  formControlName="status" 
+                  class="form-select"
+                  [class.is-invalid]="status?.invalid && (status?.dirty || status?.touched)"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+                <div class="invalid-feedback" *ngIf="status?.errors?.['required']">
+                  Status is required
+                </div>
+              </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="d-flex justify-content-between">
+              <button 
+                type="button" 
+                class="btn btn-outline-secondary" 
+                [disabled]="isSubmitting"
+                (click)="onCancel()"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                class="btn btn-primary" 
+                [disabled]="userForm.invalid || isSubmitting"
+              >
+                <span *ngIf="!isSubmitting">Create User</span>
+                <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm" role="status"></span>
+                <span *ngIf="isSubmitting">Creating...</span>
+              </button>
+            </div>
+
+            <!-- Error Message -->
+            <div *ngIf="error" class="alert alert-danger mt-3 mb-0">
+              {{ error }}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

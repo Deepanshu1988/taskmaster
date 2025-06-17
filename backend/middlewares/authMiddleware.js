@@ -1,49 +1,54 @@
 const jwt = require('jsonwebtoken');
+const Task = require('../models/taskModel');
 
 // Fallback JWT secret if not set in env
 const DEFAULT_JWT_SECRET = 'taskmaster_default_secret_2025';
 
-module.exports = async (req, res, next) => {
-  const authHeader = req.header('Authorization');
-  console.log('Auth header:', authHeader);
-  
-  if (!authHeader) {
-    console.log('No Authorization header found');
-    return res.status(401).json({ error: 'No token provided' });
-  }
-
-  const token = authHeader.replace('Bearer ', '');
-  console.log('Token received:', token ? 'Token exists' : 'No token found');
+const authenticate = (req, res, next) => {
+  // Get token from header
+  const token = req.header('Authorization')?.replace('Bearer ', '');
   
   if (!token) {
-    console.log('No token found in Authorization header');
     return res.status(401).json({ error: 'No token provided' });
   }
 
   try {
-    const secret = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
-    console.log('Using JWT secret:', secret ? 'Secret exists' : 'No secret found');
-    
-    const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
-    console.log('Decoded token:', decoded);
-    
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
     req.user = decoded;
     next();
   } catch (error) {
-    console.error('Token verification error:', error.message);
+    console.error('Token verification failed:', error);
+    res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+// Add this new middleware for task ownership check
+const ensureTaskOwnerOrAdmin = async (req, res, next) => {
+  try {
+    const taskId = req.params.id;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
     
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
-    } else if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ 
-        error: 'Invalid token',
-        details: error.message
-      });
+    const task = await Task.findById(taskId);
+    
+    if (!task) {
+      return res.status(404).json({ success: false, message: 'Task not found' });
     }
     
-    res.status(401).json({ 
-      error: 'Invalid token',
-      details: error.message 
-    });
+    if (isAdmin || task.assigned_to === userId || task.created_by === userId) {
+      req.task = task;
+      next();
+    } else {
+      res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+  } catch (error) {
+    console.error('Error in ensureTaskOwnerOrAdmin:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
+};
+
+module.exports = {
+  authenticate,
+  ensureTaskOwnerOrAdmin
 };

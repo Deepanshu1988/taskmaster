@@ -1,0 +1,266 @@
+<div class="container mt-4">
+  <!-- Task Header -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h2 class="h4 mb-0">{{ task?.title || 'Loading...' }}</h2>
+      <button class="btn btn-outline-secondary" (click)="router.navigate(['/tasks'])">
+        <i class="bi bi-arrow-left"></i> Back to Tasks
+      </button>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-8">
+          <p class="text-muted">{{ task?.description || 'No description provided' }}</p>
+          <div class="d-flex gap-3 mb-3">
+            <span class="badge" [ngClass]="{
+              'bg-primary': task?.status === 'pending',
+              'bg-warning text-dark': task?.status === 'in_progress',
+              'bg-success': task?.status === 'completed'
+            }">
+              {{ task?.status | titlecase }}
+            </span>
+            <span class="badge" [ngClass]="{
+              'bg-info': task?.priority === 'low',
+              'bg-warning': task?.priority === 'medium',
+              'bg-danger': task?.priority === 'high'
+            }">
+              {{ task?.priority | titlecase }} Priority
+            </span>
+            <span class="text-muted" *ngIf="task?.due_date">
+              <i class="bi bi-calendar-event"></i> Due: {{ task.due_date | date:'mediumDate' }}
+            </span>
+          </div>
+        </div>
+        <div class="col-md-4 text-md-end">
+          <div class="d-flex flex-column gap-2">
+            <div>
+              <span class="text-muted">Project:</span>
+              <span class="ms-2">{{ task?.project_name || 'No Project' }}</span>
+            </div>
+            <div>
+              <span class="text-muted">Assigned To:</span>
+              <span class="ms-2">{{ task?.assignee_username || 'Unassigned' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Time Tracking Section -->
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h3 class="h5 mb-0">Time Tracking</h3>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary" (click)="toggleManualEntry()">
+              <i class="bi bi-clock-history"></i> {{ showManualEntry ? 'Hide' : 'Add Manual Entry' }}
+            </button>
+            <button 
+              *ngIf="!activeEntry"
+              class="btn btn-sm btn-success"
+              (click)="startTimer()">
+              <i class="bi bi-play-fill"></i> Start Timer
+            </button>
+            <button 
+              *ngIf="activeEntry && activeEntry.task_id === taskId"
+              class="btn btn-sm btn-danger"
+              (click)="stopTimer()">
+              <i class="bi bi-stop-fill"></i> Stop Timer
+              <span class="ms-1 badge bg-light text-dark">
+                {{ getCurrentDuration(activeEntry) }}
+              </span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Manual Time Entry Form -->
+        <div class="card-body" *ngIf="showManualEntry">
+          <form (ngSubmit)="addManualEntry()" #manualEntryForm="ngForm">
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label">Date</label>
+                <input 
+                  type="date" 
+                  class="form-control" 
+                  [(ngModel)]="manualEntry.date" 
+                  name="date" 
+                  required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Start Time</label>
+                <ngb-timepicker 
+                  [(ngModel)]="manualEntry.startTime" 
+                  name="startTime"
+                  required
+                  [meridian]="true"
+                  [spinners]="true">
+                </ngb-timepicker>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">End Time</label>
+                <ngb-timepicker 
+                  [(ngModel)]="manualEntry.endTime" 
+                  name="endTime"
+                  required
+                  [meridian]="true"
+                  [spinners]="true">
+                </ngb-timepicker>
+              </div>
+              <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                  <i class="bi bi-plus-circle"></i> Add Entry
+                </button>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Notes</label>
+                <textarea 
+                  class="form-control" 
+                  [(ngModel)]="manualEntry.notes" 
+                  name="notes" 
+                  rows="2"
+                  placeholder="Optional notes about this time entry">
+                </textarea>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Time Entries List -->
+        <div class="list-group list-group-flush" *ngIf="timeEntries.length > 0">
+          <div class="list-group-item d-flex justify-content-between align-items-center" *ngFor="let entry of timeEntries">
+            <div>
+              <div class="d-flex align-items-center">
+                <span class="badge bg-light text-dark me-2">
+                  {{ getCurrentDuration(entry) }}
+                </span>
+                <span class="text-muted small">
+                  {{ formatDate(entry.start_time) }}
+                  {{ entry.end_time ? 'to ' + formatDate(entry.end_time) : '' }}
+                </span>
+                <span class="badge bg-info ms-2" *ngIf="!entry.end_time">
+                  Active
+                </span>
+              </div>
+              <div class="mt-1 small text-muted" *ngIf="entry.notes">
+                {{ entry.notes }}
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <button 
+                *ngIf="isCurrentUserEntry(entry) && !entry.end_time"
+                class="btn btn-sm btn-outline-danger"
+                (click)="stopTimer('Manually stopped')">
+                <i class="bi bi-stop-fill"></i> Stop
+              </button>
+              <button 
+                *ngIf="isCurrentUserEntry(entry)"
+                class="btn btn-sm btn-outline-danger"
+                (click)="deleteTimeEntry(entry.id)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="card-body text-center text-muted" *ngIf="timeEntries.length === 0">
+          <i class="bi bi-stopwatch fs-1 d-block mb-2"></i>
+          <p class="mb-0">No time entries yet. Start tracking time to see records here.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Time Summary Card -->
+    <div class="col-lg-4">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h3 class="h5 mb-0">Time Summary</h3>
+        </div>
+        <div class="card-body">
+          <div class="text-center mb-4">
+            <div class="display-4 fw-bold">{{ timeSummary.formattedTime }}</div>
+            <div class="text-muted">Total Tracked Time</div>
+          </div>
+          <hr>
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span>Total Entries</span>
+              <span class="badge bg-primary rounded-pill">{{ timeSummary.totalEntries }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span>Active Timers</span>
+              <span class="badge bg-warning text-dark rounded-pill">{{ timeSummary.activeEntries }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span>Last Updated</span>
+              <span class="text-muted small">
+                {{ task?.last_time_tracked ? (task.last_time_tracked | date:'short') : 'Never' }}
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="h5 mb-0">Quick Actions</h3>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <button 
+              *ngIf="!activeEntry"
+              class="btn btn-outline-success"
+              (click)="startTimer('Quick start from dashboard')">
+              <i class="bi bi-play-fill"></i> Start New Timer
+            </button>
+            <button 
+              *ngIf="activeEntry && activeEntry.task_id === taskId"
+              class="btn btn-outline-danger"
+              (click)="stopTimer('Stopped from dashboard')">
+              <i class="bi bi-stop-fill"></i> Stop Current Timer
+            </button>
+            <button 
+              *ngIf="activeEntry && activeEntry.task_id !== taskId"
+              class="btn btn-warning"
+              (click)="router.navigate(['/tasks', activeEntry.task_id])">
+              <i class="bi bi-stopwatch"></i> View Active Timer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- In task-details.component.html, find the card with time tracking info -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h3 class="h5 mb-0">Time Tracking</h3>
+  </div>
+  <div class="card-body">
+    <!-- Add this section -->
+    <div class="mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="fw-medium">Total Tracked Time:</span>
+        <span class="badge bg-primary">
+          {{ task.total_time | number:'1.0-0' }} seconds
+        </span>
+      </div>
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="fw-medium">Last Tracked:</span>
+        <span class="text-muted small">
+          {{ task.last_time_tracked ? (task.last_time_tracked | date:'medium') : 'Never' }}
+        </span>
+      </div>
+    </div>
+    <!-- End of new section -->
+
+    <div class="progress mb-3" *ngIf="timeSummary.totalTime > 0">
+      <div class="progress-bar bg-primary" role="progressbar" 
+           [style.width]="(timeSummary.totalTime / (8 * 60 * 60) * 100) + '%'">
+        {{ timeSummary.totalTime | formatDuration }}
+      </div>
+    </div>
+    <!-- Rest of your time tracking UI... -->
+  </div>
+</div>

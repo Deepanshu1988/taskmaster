@@ -3,3 +3,60 @@
 body {
   margin: 0;
 }
+
+/* Add this to your global styles */
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* Toastr overrides */
+.toast-container .ngx-toastr {
+  box-shadow: 0 0 12px rgba(0,0,0,0.15);
+}
+
+/* Custom scrollbar for comments */
+.comments-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.comments-section::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.comments-section::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.comments-section::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+/* Custom modal styling */
+.notification-settings-modal .modal-content {
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.notification-settings-modal .modal-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.notification-settings-modal .modal-title {
+  color: #343a40;
+  font-weight: 600;
+}
+
+.notification-settings-modal .modal-body {
+  padding: 1.5rem;
+}
+
+/* Make sure the toggle switches look good in the modal */
+.notification-settings-modal .form-check-input:checked {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}

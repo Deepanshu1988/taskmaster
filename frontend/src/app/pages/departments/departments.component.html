@@ -1,0 +1,64 @@
+<div class="container py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">Departments</h4>
+        </div>
+        <div class="card-body p-0">
+          <!-- Loading State -->
+          <div *ngIf="isLoading" class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 mb-0">Loading departments...</p>
+          </div>
+          
+          <!-- Error State -->
+          <div *ngIf="error && !isLoading" class="alert alert-danger m-3">
+            {{ error }}
+          </div>
+          
+          <!-- Empty State -->
+          <div *ngIf="!isLoading && departments.length === 0" class="text-center p-4">
+            <p class="text-muted mb-0">No departments found.</p>
+          </div>
+          
+          <!-- Departments List -->
+          <div *ngIf="!isLoading && departments.length > 0" class="list-group list-group-flush">
+            <div *ngFor="let dept of departments" class="list-group-item">
+              <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                <div class="flex-grow-1 me-md-3 mb-2 mb-md-0">
+                  <h6 class="mb-1 d-inline-block me-2">{{ dept.name }}</h6>
+                  <small class="text-muted d-block" *ngIf="dept.description">{{ dept.description }}</small>
+                  <div class="mt-1">
+                    <small class="text-muted" *ngIf="dept.created_at">
+                      Created: {{ dept.created_at | date:'medium' }}
+                    </small>
+                    <small class="text-muted d-block" *ngIf="dept.updated_at">
+                      Last updated: {{ dept.updated_at | date:'medium' }}
+                    </small>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center mt-2 mt-md-0">
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-outline-primary btn-action" 
+                            (click)="editDepartment(dept)" title="Edit Department">
+                      <i class="bi bi-pencil"></i>
+                      <span class="d-none d-md-inline ms-1">Edit</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-action ms-2" 
+                            (click)="deleteDepartment(dept)" title="Delete Department">
+                      <i class="bi bi-trash"></i>
+                      <span class="d-none d-md-inline ms-1">Delete</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

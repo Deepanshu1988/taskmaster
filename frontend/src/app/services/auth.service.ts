@@ -6,6 +6,7 @@ import { tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 
 interface LoginResponse {
+  role: string;
   token: string;
   user: {
     id: number;
@@ -18,6 +19,11 @@ interface LoginResponse {
   providedIn: 'root'
 })
 export class AuthService {
+
+  getToken(): string | null {
+    // Get the token from where you store it (localStorage, sessionStorage, etc.)
+    return localStorage.getItem('token');
+  }
   [x: string]: any;
   private apiUrl = 'http://localhost:3000/api';
   private currentUserSubject: BehaviorSubject<any>;
@@ -107,6 +113,17 @@ export class AuthService {
         }
       })
     );
+  }
+
+  forgotPassword(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/auth/forgot-password`, { email });
+  }
+
+  resetPassword(token: string, newPassword: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/auth/reset-password`, { 
+      token, 
+      newPassword 
+    });
   }
 
   logout() {

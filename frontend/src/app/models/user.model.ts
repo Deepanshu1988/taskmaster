@@ -4,9 +4,9 @@ export interface User {
   username: string;
   email: string;
   role: 'admin' | 'user' | 'manager' | null;  // Allow null
-  department?: string;
+  department?: number|string;
+  department_name?: string;
   position?: string;
-  phone?: string;
   avatar?: string;
   status?: 'active' | 'inactive';
   assignedTasks?: number;

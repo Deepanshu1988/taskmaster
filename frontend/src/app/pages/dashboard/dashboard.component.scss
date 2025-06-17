@@ -1,0 +1,158 @@
+// Dashboard container
+.dashboard-container {
+  padding: 20px;
+}
+
+// Dashboard header
+.dashboard-header {
+  margin-bottom: 2rem;
+}
+
+.dashboard-title {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+// Stats cards
+.stat-card {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  margin-bottom: 1.5rem;
+  
+  .stat-card-body {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+    color: white;
+    
+    .stat-icon {
+      font-size: 2.5rem;
+      margin-right: 1rem;
+      opacity: 0.8;
+    }
+    
+    .stat-content {
+      flex: 1;
+      
+      .stat-value {
+        font-size: 1.75rem;
+        font-weight: 600;
+        margin: 0;
+      }
+      
+      .stat-label {
+        margin: 0.25rem 0 0;
+        opacity: 0.9;
+      }
+      
+      .stat-trend {
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+        
+        i {
+          margin-right: 0.25rem;
+        }
+      }
+    }
+  }
+}
+
+// Action cards
+.action-card {
+  background: white;
+  border-radius: 10px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e9ecef;
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+  }
+  
+  .action-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(13, 110, 253, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    
+    i {
+      font-size: 1.5rem;
+      color: #0d6efd;
+    }
+  }
+  
+  h6 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  
+  p {
+    margin-bottom: 1rem;
+    color: #6c757d;
+  }
+  
+  .btn {
+    width: 100%;
+    margin-top: auto;
+  }
+}
+
+// Tables
+.table {
+  th {
+    font-weight: 600;
+    color: #495057;
+    border-top: none;
+    border-bottom: 2px solid #e9ecef;
+  }
+  
+  td {
+    vertical-align: middle;
+  }
+  
+  .badge {
+    padding: 0.5em 0.75em;
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: capitalize;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .stat-card {
+    .stat-card-body {
+      padding: 1rem;
+      
+      .stat-icon {
+        font-size: 2rem;
+      }
+      
+      .stat-value {
+        font-size: 1.5rem;
+      }
+    }
+  }
+  
+  .action-card {
+    padding: 1.25rem;
+    
+    .action-icon {
+      width: 50px;
+      height: 50px;
+    }
+  }
+}

@@ -1,0 +1,55 @@
+<div class="container">
+  
+      <div class="card mb-4 mt-2">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ isEditMode ? 'Edit' : 'Add New' }} Department</h5>
+          <button type="button" class="btn-close" (click)="closeModal()" aria-label="Close"></button>
+        </div>
+        
+        <div class="modal-body">
+          <form [formGroup]="departmentForm" (ngSubmit)="onSubmit()">
+            <div *ngIf="error" class="alert alert-danger">
+              {{ error }}
+            </div>
+        
+            <div class="mb-3">
+              <label for="name" class="form-label">Department Name</label>
+              <input
+                type="text"
+                class="form-control"
+                id="name"
+                formControlName="name"
+                [class.is-invalid]="departmentForm.get('name')?.invalid && departmentForm.get('name')?.touched"
+              >
+              <div *ngIf="departmentForm.get('name')?.invalid && departmentForm.get('name')?.touched" 
+                   class="invalid-feedback">
+                <div *ngIf="departmentForm.get('name')?.errors?.['required']">Name is required</div>
+                <div *ngIf="departmentForm.get('name')?.errors?.['minlength']">
+                  Name must be at least 3 characters long
+                </div>
+              </div>
+            </div>
+        
+            <div class="mb-3">
+              <label for="description" class="form-label">Description</label>
+              <textarea
+                class="form-control"
+                id="description"
+                formControlName="description"
+                rows="3"
+              ></textarea>
+            </div>
+        
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-secondary" (click)="closeModal()">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" [disabled]="isSubmitting || departmentForm.invalid">
+                <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                {{ isSubmitting ? 'Saving...' : (isEditMode ? 'Update' : 'Save') }} Department
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+</div>

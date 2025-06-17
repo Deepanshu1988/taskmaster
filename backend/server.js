@@ -1,16 +1,19 @@
+// Load environment variables first
+dotenv.config();
+
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const mysql = require('mysql2');
 const path = require('path');
-
-// Load environment variables
-dotenv.config();
+// ... other imports
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:4200', // Adjust this to match your Angular app's URL
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -22,37 +25,33 @@ const db = mysql.createConnection({
   database: process.env.DB_NAME
 });
 
-db.testConnection = function() {
-  return new Promise((resolve, reject) => {
-    db.connect((err) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
-};
+// Make db accessible in routes
+app.set('db', db);
 
-db.testConnection()
-  .then(() => console.log('Connected to MySQL database'))
-  .catch((err) => console.error('Database connection error:', err));
+// Test DB connection
+db.connect((err) => {
+  if (err) {
+    console.error('Error connecting to MySQL:', err);
+    return;
+  }
+  console.log('Connected to MySQL database');
+});
 
 // Routes
+const departmentRoutes = require('./routes/departmentRoutes');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 
+app.use('/api/departments', departmentRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error'
-  });
+  console.error(err.stack);
+  res.status(500).json({ success: false, error: 'Something went wrong!' });
 });
 
 // 404 handler
@@ -60,7 +59,8 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });
 });
 
+// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

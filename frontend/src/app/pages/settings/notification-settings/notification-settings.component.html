@@ -1,0 +1,125 @@
+<div class="notification-settings">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Notification Settings</h3>
+      <p class="card-subtitle">Customize how you receive notifications</p>
+    </div>
+    
+    <div class="card-body">
+        <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()" *ngIf="settingsForm">
+<!-- Email Notifications Section -->
+<div class="notification-type">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h5><i class="fas fa-envelope me-2"></i> Email Notifications</h5>
+        <p class="text-muted mb-0">Receive notifications via email</p>
+      </div>
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="emailEnabled" 
+               [formControl]="emailGroup.get('enabled')" 
+               (change)="onPreferenceChange('email')">
+        <label class="form-check-label" for="emailEnabled"></label>
+      </div>
+    </div>
+    
+    <div class="ps-4" [class.text-muted]="!emailGroup.get('enabled')?.value">
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="emailTaskReminders" 
+               [formControl]="emailGroup.get('taskReminders')" 
+               [disabled]="!emailGroup.get('enabled')?.value">
+        <label class="form-check-label" for="emailTaskReminders">Task reminders</label>
+      </div>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="emailDueDateAlerts" 
+               [formControl]="emailGroup.get('dueDateAlerts')" 
+               [disabled]="!emailGroup.get('enabled')?.value">
+        <label class="form-check-label" for="emailDueDateAlerts">Due date alerts</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="emailStatusUpdates" 
+               [formControl]="emailGroup.get('statusUpdates')" 
+               [disabled]="!emailGroup.get('enabled')?.value">
+        <label class="form-check-label" for="emailStatusUpdates">Status updates</label>
+      </div>
+    </div>
+  </div>
+        <!-- In-App Notifications -->
+        <div class="notification-type">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h5><i class="fas fa-bell me-2"></i> In-App Notifications</h5>
+              <p class="text-muted mb-0">Receive notifications within the application</p>
+            </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="inAppEnabled" 
+                       [formControl]="inAppEnabled"
+                       (change)="onPreferenceChange('in_app')">
+                <label class="form-check-label" for="inAppEnabled"></label>
+              </div>
+          </div>
+          
+          <div class="ps-4" [class.text-muted]="!settingsForm.get('in_app')?.get('enabled')?.value">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="inAppTaskReminders" 
+                       [formControl]="inAppTaskReminders"
+                       [disabled]="!inAppEnabled.value">
+                <label class="form-check-label" for="inAppTaskReminders">Task reminders</label>
+              </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="inAppMentions" 
+                       [formControl]="inAppMentions"
+                       [disabled]="!inAppEnabled.value">
+                <label class="form-check-label" for="inAppMentions">Mentions</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="inAppStatusUpdates" 
+                       [formControl]="inAppStatusUpdates"
+                       [disabled]="!inAppEnabled.value">
+                <label class="form-check-label" for="inAppStatusUpdates">Status updates</label>
+              </div>
+          </div>
+        </div>
+
+        <hr>
+
+        <!-- Push Notifications -->
+        <div class="notification-type">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h5><i class="fas fa-mobile-alt me-2"></i> Push Notifications</h5>
+              <p class="text-muted mb-0">Receive push notifications on your device</p>
+            </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="pushEnabled" 
+                       [formControl]="pushEnabled"
+                       (change)="onPushNotificationChange()">
+                <label class="form-check-label" for="pushEnabled"></label>
+              </div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="pushTaskReminders" 
+                   [formControl]="pushTaskReminders"
+                   [disabled]="!pushEnabled.value">
+            <label class="form-check-label" for="pushTaskReminders">Task reminders</label>
+          </div>
+          <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="pushMentions" 
+                       [formControl]="pushMentions"
+                       [disabled]="!pushEnabled.value">
+                <label class="form-check-label" for="pushMentions">Mentions</label>
+              </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end mt-4">
+          <button type="button" class="btn btn-outline-secondary me-2" (click)="dismissModal()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSaving || !settingsForm.dirty">
+            <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            {{ isSaving ? 'Saving...' : 'Save Changes' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

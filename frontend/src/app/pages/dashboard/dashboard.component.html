@@ -1,20 +1,22 @@
-<div class="container-fluid dashboard-container">
-  <!-- Header Section -->
-  <div class="dashboard-header">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="dashboard-title">Dashboard</h2>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary" (click)="openAddTaskModal()">
-          <i class="fas fa-plus"></i> New Task
-        </button>
-        <button class="btn btn-primary" (click)="openAddProjectModal()">
-          <i class="fas fa-project-diagram"></i> New Project
-        </button>
-      </div>
+<div class="container-fluid dashboard-container ">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+    <h2 class="dashboard-title mb-3 mb-md-0">Dashboard</h2>
+    <div class="d-flex flex-column flex-sm-row gap-2 ms-md-3">
+     <!--<button *ngIf="isAdmin" class="btn btn-outline-primary d-inline-flex align-items-center" (click)="openAddDepartmentModal()">
+        <i class="fas fa-plus me-2"></i> Add Department
+      </button>
+      <button *ngIf="isAdmin" class="btn btn-outline-primary d-inline-flex align-items-center" (click)="openAddTaskModal()">
+        <i class="fas fa-plus me-2"></i> New Task
+      </button>
+      <button *ngIf="isAdmin" class="btn btn-primary d-inline-flex align-items-center" (click)="openAddProject()">
+        <i class="fas fa-plus me-2"></i> New Project
+      </button>--> 
+      
     </div>
+  </div>
 
     <!-- Quick Stats -->
-    <div class="row mb-4">
+    <div class="row mb-4 gap-2">
       <div class="col-md-3" *ngFor="let stat of stats">
         <div class="stat-card">
           <div class="stat-card-body">
@@ -36,33 +38,34 @@
     <!-- Recent Tasks -->
     <div class="card mb-4">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Recent Tasks</h5>
+        <h5 class="mb-0 fw-bold">Recent Tasks</h5>
         <button class="btn btn-link text-primary p-0" (click)="viewAllTasks()">View All</button>
       </div>
       <div class="card-body">
         <div class="table-responsive">
           <table class="table table-hover">
-            <thead>
+            <thead >
               <tr>
-                <th>Task Name</th>
-                <th>Project</th>
-                <th>Status</th>
-                <th>Due Date</th>
-                <th>Priority</th>
+                <th class="fw-bold">Task Name</th>
+                <th class="fw-bold">Project</th>
+                <th class="fw-bold">Status</th>
+                <th class="fw-bold">Due Date</th>
+                <th class="fw-bold">Priority</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let task of recentTasks">
                 <td>{{task.title}}</td>
-               <!-- <td>{{ task | json }}</td> -->
+                <!--<td>{{ task | json }}</td>-->
                 <td>{{task.project?.name || 'No project'}}</td>
+                
                 <td>
                   <span class="badge" [ngClass]="{'bg-success': task.status === 'completed', 'bg-warning': task.status === 'in_progress', 'bg-info': task.status === 'pending'}">
                     {{task.status}}
                   </span>
                 </td>
-                <td>{{ task | json }}</td>
-                <td>{{task.dueDate | date}}</td>
+               <!-- <td>{{ task | json }}</td> -->
+                <td>{{ task.due_date ? (task.due_date | date) : 'No due date' }}</td>
                 <td>
                   <span class="badge" [ngClass]="{'bg-danger': task.priority === 'high', 'bg-warning': task.priority === 'medium', 'bg-success': task.priority === 'low'}">
                     {{task.priority}}
@@ -76,18 +79,18 @@
     </div>
 
    <!-- Quick Actions -->
-   <div class="row mb-4">
-    <div class="col-md-4" *ngFor="let action of quickActions">
-      <div class="action-card" (click)="action.onClick()">
-        <div class="action-icon">
-          <i class="{{action.icon}}"></i>
-        </div>
-        <h6>{{action.title}}</h6>
-        <p class="text-muted">{{action.description}}</p>
-        <button class="btn btn-primary w-100">{{action.buttonText}}</button>
+<div class="row mb-4 g-2" *ngIf="quickActions.length > 0">
+  <div class="col-md-4" *ngFor="let action of quickActions">
+    <div class="action-card" (click)="action.onClick()">
+      <div class="action-icon">
+        <i [class]="action.icon"></i>
       </div>
+      <h6>{{action.title}}</h6>
+      <p class="text-muted">{{action.description}}</p>
+      <button class="btn btn-primary w-100">{{action.buttonText}}</button>
     </div>
   </div>
+</div>
 
   <!-- Modals -->
   <ng-template #addTaskModal let-modal>
@@ -226,4 +229,5 @@
       </form>
     </div>
   </ng-template>
+  
 </div>

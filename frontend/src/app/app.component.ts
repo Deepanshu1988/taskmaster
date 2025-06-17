@@ -24,6 +24,12 @@ export class AppComponent implements OnInit {
     // Initialization code here if needed
   }
 
+  isAdmin(): boolean {
+    if (!this.currentUser) return false;
+    // Check both possible locations for the role
+    return this.currentUser.user?.role === 'admin' || this.currentUser.role === 'admin';
+  }
+
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
