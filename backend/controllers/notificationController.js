@@ -148,55 +148,92 @@ class NotificationController {
   static async sendScheduledNotifications() {
     try {
       const now = new Date();
-      const notifications = await Notification.findAll({
-        where: {
-          status: 'unread',
-          scheduledAt: {
-            [Op.lte]: now
-          },
-          sentAt: null
-        },
-        include: [{
-          model: User,
-          attributes: ['id', 'name', 'email', 'notificationPreferences']
-        }]
-      });
-
+      
+      // Get unread notifications that are due to be sent
+      const [notifications] = await pool.query(
+        `SELECT * FROM notifications 
+         WHERE status = 'unread' 
+         AND (scheduled_at IS NULL OR scheduled_at <= ?) 
+         AND sent_at IS NULL
+         ORDER BY created_at ASC
+         LIMIT 100`,
+        [now]
+      );
+  
       for (const notification of notifications) {
-        await this.sendNotification(notification);
-        notification.sentAt = new Date();
-        await notification.save();
+        try {
+          await this.sendNotification(notification);
+          
+          // Update status to 'sent' and set sent_at timestamp
+          await pool.query(
+            `UPDATE notifications 
+             SET status = 'sent', 
+                 sent_at = NOW(), 
+                 updated_at = NOW() 
+             WHERE id = ?`,
+            [notification.id]
+          );
+          
+          console.log(`Notification ${notification.id} processed successfully`);
+        } catch (error) {
+          console.error(`Failed to process notification ${notification.id}:`, error);
+          
+          // Update status to 'failed' if sending fails
+          await pool.query(
+            `UPDATE notifications 
+             SET status = 'failed', 
+                 updated_at = NOW() 
+             WHERE id = ?`,
+            [notification.id]
+          );
+        }
       }
     } catch (error) {
-      console.error('Error sending scheduled notifications:', error);
+      console.error('Error in sendScheduledNotifications:', error);
     }
   }
-
   // Helper method to send notification based on type
   static async sendNotification(notification) {
     console.log('\n--- Sending Notification ---');
     console.log('Notification ID:', notification.id);
     console.log('Type:', notification.type);
     console.log('Title:', notification.title);
-    console.log('Recipient User ID:', notification.userId);
+    console.log('Recipient User ID:', notification.user_id); // Changed from userId to user_id
     
     try {
-        const user = notification.User;
-        
-        if (!user) {
-            console.error('User not found for notification');
-            return;
-        }
-        
-        console.log('User found:', user.email);
-        console.log('User notification prefs:', JSON.stringify(user.notificationPreferences, null, 2));
-        
-        // Rest of your existing code...
+      // Get user details
+      const [users] = await pool.query(
+        'SELECT * FROM users WHERE id = ?',
+        [notification.user_id]
+      );
+      
+      const user = users[0];
+      
+      if (!user) {
+        console.error('User not found for notification');
+        throw new Error('User not found');
+      }
+      
+      console.log('Sending to user:', user.email);
+      
+      // Send email notification
+      if (notification.type === 'email') {
+        await emailService.sendEmail({
+          to: user.email,
+          subject: notification.title,
+          text: notification.message,
+          html: `<p>${notification.message}</p>`
+        });
+      }
+      
+      // Add other notification types (like push) here if needed
+      
+      return true;
     } catch (error) {
-        console.error('Error in sendNotification:', error);
-        throw error;
+      console.error('Error in sendNotification:', error);
+      throw error; // Re-throw to be caught by the caller
     }
-}
+  }
 }
 
 // Schedule job to send notifications every minute

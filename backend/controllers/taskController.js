@@ -2,7 +2,13 @@ const Task = require('../models/taskModel');
 const User = require('../models/userModel');
 const Notification = require('../models/notificationModel');
 const emailService = require('../utils/emailService');
-
+const { sendTaskStatusNotification } = require('../utils/notificationHelper');
+const STATUS_TO_PROGRESS = {
+  'not_started': 0,
+  'in_progress': 33,
+  'in_review': 66,
+  'completed': 100
+};
 exports.createTask = async (req, res) => {
   try {
     const taskData = { ...req.body, created_by: req.user.id };
@@ -179,109 +185,84 @@ exports.updateTask = async (req, res) => {
     
     // Don't allow changing the creator
     delete updates.created_by;
+    console.log('Current user in controller:', req.user);
+
     
-    // Check if this is an assignment or reassignment
-    let assignedToChanged = false;
-    let previousAssignee = null;
-    let currentTask = null;
-    
-    if (updates.assigned_to !== undefined) {  
-      currentTask = await Task.findById(id);
-      if (currentTask) {
-        const newAssignee = updates.assigned_to;
-        const currentAssignee = currentTask.assigned_to;
-        
-        // Check if assignment is actually changing
-        assignedToChanged = (newAssignee !== currentAssignee) && 
-                          (!newAssignee || !currentAssignee || newAssignee.toString() !== currentAssignee.toString());
-        
-        previousAssignee = currentAssignee;
-        console.log('Assignment change detected:', {
-          newAssignee,
-          currentAssignee,
-          assignedToChanged,
-          previousAssignee
-        });
-      }
+    // Get current task state before update
+    const currentTask = await Task.findById(id);
+    if (!currentTask) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Task not found' 
+      });
     }
-    
+// Store old status for notification
+const oldStatus = currentTask.status;
+
+
+    // Check for assignment changes
+    const assignedToChanged = updates.assigned_to !== undefined && 
+                            updates.assigned_to !== currentTask.assigned_to;
+
+    // Update the task
     const affectedRows = await Task.update(id, updates);
     
     if (!affectedRows) {
       return res.status(404).json({ 
         success: false,
-        message: 'Task not found or no changes made' 
+        message: 'No changes made to task' 
       });
     }
-    
-    const updatedTask = await Task.findById(id);
-    
-    // Send notification if task was assigned or reassigned
-    if (assignedToChanged && updatedTask.assigned_to) {
-      try {
-        console.log('Preparing to send assignment notification for task:', {
-          taskId: updatedTask.id,
-          newAssignee: updatedTask.assigned_to,
-          assigner: req.user.id
-        });
-        
-        const [assignee, assigner] = await Promise.all([
-          User.findById(updatedTask.assigned_to),
-          User.findById(req.user.id)
-        ]);
-        
-        if (!assignee) {
-          console.error('Assignee not found with ID:', updatedTask.assigned_to);
-        } else if (!assignee.email) {
-          console.error('Assignee has no email address:', assignee.id);
-        } else {
-          console.log('Creating notification for assignee:', assignee.email);
-          
-          // Create notification in database
-          await Notification.create({
-            userId: updatedTask.assigned_to,
-            title: 'Task Assigned to You',
-            message: `You have been assigned to task: ${updatedTask.title}`,
-            type: 'email',
-            relatedEntity: 'task',
-            relatedEntityId: id,
-            status: 'unread'
-          });
-          
-          // Send email notification
-          const emailSubject = `Task Assigned: ${updatedTask.title}`;
-          const emailText = `Hello ${assignee.username || 'there'},\n\n` +
-            `You have been assigned to a task by ${assigner ? assigner.username : 'an administrator'}.\n\n` +
-            `Task: ${updatedTask.title}\n` +
-            `Description: ${updatedTask.description || 'No description provided'}\n` +
-            `Due Date: ${updatedTask.due_date ? new Date(updatedTask.due_date).toLocaleDateString() : 'No due date'}\n` +
-            `Status: ${updatedTask.status || 'Not started'}\n\n` +
-            `Please log in to view and manage your tasks.\n\n` +
-            `Thank you,\nThe TaskMaster Team`;
-            
-          console.log('Sending assignment email to:', assignee.email);
-          await emailService.sendNotificationEmail(
-            assignee.email,
-            emailSubject,
-            emailText
-          );
-          
-          console.log(`✅ Notification sent to ${assignee.email} for task assignment`);
-        }
-      } catch (error) {
-        console.error('❌ Error sending assignment notification:', {
-          error: error.message,
-          stack: error.stack
-        });
-        // Don't fail the request if notification fails
-      }
+
+    // Get the updated task with all relationships
+    const updatedTask = await Task.findById(id, updates,{new: true});
+
+    if (!updatedTask) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Task not found' 
+      });
     }
+    console.log('Current user in controller:', req.user);
     
+    // Send notification in the background
+    sendTaskStatusNotification(updatedTask, oldStatus, req.user)
+      .catch(error => {
+        console.error('Error sending notification:', error);
+      });
+    // Handle notifications
+    try {
+      // 1. Handle assignment notifications
+      if (assignedToChanged && updatedTask.assigned_to) {
+        const newAssignee = await User.findById(updates.assigned_to);
+        if (newAssignee) {
+          await emailService.sendNotificationEmail(
+            newAssignee.email,
+            `New Task Assigned: ${updatedTask.title}`,
+            `You have been assigned to the task: ${updatedTask.title}`
+          );
+        }
+      }
+
+      // 2. Handle status change notifications
+      if (updates.status && updates.status !== currentTask.status) {
+        await sendTaskStatusNotification(
+          { ...updatedTask, status: updates.status }, // Updated task with new status
+          currentTask.status, // Old status
+          req.user // Who made the change
+        );
+      }
+    } catch (notificationError) {
+      console.error('Notification error:', notificationError);
+      // Don't fail the request if notifications fail
+    }
+
     res.json({ 
       success: true, 
       message: 'Task updated successfully',
       data: updatedTask
     });
+
   } catch (error) {
     console.error('Error updating task:', error);
     res.status(500).json({ 
@@ -438,9 +419,18 @@ exports.updateTaskStatus = async (req, res) => {
         data: { taskId: task.id, status: status }
       });
     }
+// Calculate new progress based on status
+const newProgress = STATUS_TO_PROGRESS[status] !== undefined ? 
+STATUS_TO_PROGRESS[status] : 
+task.progress;
 
+// Update both status and progress
+const updateData = { 
+status,
+progress: newProgress
+};
     // Update the task status
-    const affectedRows = await Task.update(taskId, { status });
+    const affectedRows = await Task.update(taskId, updateData);
     if (!affectedRows) {
       return res.status(404).json({ 
         success: false,
@@ -450,154 +440,14 @@ exports.updateTaskStatus = async (req, res) => {
 
     // Get the updated task with all details
     const updatedTask = await Task.findById(taskId);
-    
-    // Send notification to relevant users
-    try {
-      console.log('\n--- Starting Notification Process ---');
-      console.log('Task ID:', task.id);
-      console.log('Task Title:', task.title);
-      console.log('Assigned To:', task.assigned_to);
-      console.log('Created By:', task.created_by);
-      console.log('Current User (Updater):', req.user);
-      console.log('Old Status:', oldStatus);
-      console.log('New Status:', status);
-
-      const updater = await User.findById(req.user.id);
-      if (!updater) {
-        console.error('Error: Updater user not found');
-        throw new Error('Updater user not found');
-      }
-      console.log('Updater found:', { id: updater.id, email: updater.email, role: updater.role });
-      
-      const notificationRecipients = [];
-      
-      // Always notify the assignee if they're not the one making the change
-      if (task.assigned_to) {
-        const assignee = await User.findById(task.assigned_to);
-        if (!assignee) {
-          console.error('Error: Assignee not found with ID:', task.assigned_to);
-        } else {
-          console.log('Task Assignee:', { id: assignee.id, email: assignee.email });
-          if (task.assigned_to.toString() !== req.user.id) {
-            console.log('Adding assignee to notification recipients:', assignee.email);
-            notificationRecipients.push(task.assigned_to);
-          } else {
-            console.log('Skipping notification - assignee is the one making the change');
-          }
-        }
-      } else {
-        console.log('No assignee set for this task');
-      }
-      
-      // If admin is making the change, also notify the task creator if they're different
-      if (req.user.role === 'admin' && task.created_by) {
-        const creator = await User.findById(task.created_by);
-        if (creator) {
-          console.log('Task Creator:', { id: creator.id, email: creator.email });
-          if (task.created_by.toString() !== req.user.id) {
-            console.log('Adding creator to notification recipients:', creator.email);
-            notificationRecipients.push(task.created_by);
-          } else {
-            console.log('Skipping notification - creator is the one making the change');
-          }
-        } else {
-          console.error('Error: Task creator not found with ID:', task.created_by);
-        }
-      }
-      
-      console.log('Final notification recipients count:', notificationRecipients.length);
-      
-      // Process notifications for all recipients
-      for (const recipientId of [...new Set(notificationRecipients)]) {
-        try {
-          console.log('\n--- Processing notification for recipient ID:', recipientId);
-          const recipient = await User.findById(recipientId);
-          
-          if (!recipient) {
-            console.error('Error: Recipient not found with ID:', recipientId);
-            continue;
-          }
-          
-          console.log('Recipient details:', { 
-            id: recipient.id, 
-            email: recipient.email,
-            username: recipient.username,
-            role: recipient.role 
-          });
-          
-          if (!recipient.email) {
-            console.error('Error: Recipient has no email address');
-            continue;
-          }
-          
-          // Create notification in database
-          try {
-            const notification = await Notification.create({
-              userId: recipient.id,
-              title: 'Task Status Updated',
-              message: `Status of task "${task.title}" was changed from ${oldStatus} to ${status} by ${updater.username || 'a user'}`,
-              type: 'email',
-              relatedEntity: 'task',
-              relatedEntityId: task.id,
-              status: 'unread'
-            });
-            
-            console.log('✅ Notification created in database:', {
-              notificationId: notification.id,
-              userId: notification.userId,
-              message: notification.message
-            });
-            
-            // Send email notification
-            const emailSubject = `Task Status Updated: ${task.title}`;
-            const emailText = `Hello ${recipient.username || 'there'},\n\n` +
-              `The status of a task has been updated by ${updater.username || 'a user'}.\n\n` +
-              `Task: ${task.title}\n` +
-              `Old Status: ${oldStatus || 'Not specified'}\n` +
-              `New Status: ${status || 'Not specified'}\n` +
-              `Updated By: ${updater.username || 'System'}\n` +
-              `Updated At: ${new Date().toLocaleString()}\n\n` +
-              `Please log in to view the updated task details.\n\n` +
-              `Thank you,\nThe TaskMaster Team`;
-              
-            console.log('Sending email to:', recipient.email);
-            console.log('Email subject:', emailSubject);
-            
-            const emailResult = await emailService.sendNotificationEmail(
-              recipient.email,
-              emailSubject,
-              emailText
-            );
-            
-            console.log('✅ Email sent successfully:', {
-              messageId: emailResult?.messageId,
-              response: emailResult?.response
-            });
-            
-          } catch (error) {
-            console.error('❌ Error creating notification or sending email:', {
-              error: error.message,
-              stack: error.stack
-            });
-            // Continue with other recipients if one fails
-          }
-          
-        } catch (error) {
-          console.error('❌ Error processing recipient:', {
-            recipientId,
-            error: error.message,
-            stack: error.stack
-          });
-          // Continue with other recipients if one fails
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error in notification processing:', {
-        error: error.message,
-        stack: error.stack
+    console.log('Sending notification with task:', JSON.stringify(updatedTask, null, 2));
+console.log('Updater info:', JSON.stringify(req.user, null, 2));
+    // Send notifications in the background (don't wait for it to complete)
+    sendTaskStatusNotification(updatedTask, oldStatus, req.user)
+      .catch(error => {
+        console.error('Background notification error:', error);
+        // Continue even if notification fails
       });
-      // Don't fail the request if notification processing fails
-    }
 
     res.json({ 
       success: true, 
@@ -605,9 +455,9 @@ exports.updateTaskStatus = async (req, res) => {
       data: updatedTask
     });
   } catch (error) {
-    console.error('Error updating task status:', error);
+    console.error('Error in updateTaskStatus:', error);
     res.status(500).json({ 
-      success: false,
+      success: false, 
       message: 'Failed to update task status',
       error: error.message 
     });

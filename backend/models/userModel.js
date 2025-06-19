@@ -56,6 +56,14 @@ const User = {
         ORDER BY u.created_at DESC
     `);
     return rows;
+},
+async getAllUsers() {
+  const [rows] = await pool.query(`
+    SELECT id, username, email, role 
+    FROM users
+    WHERE role = 'admin'
+  `);
+  return rows;
 }
 };
 
