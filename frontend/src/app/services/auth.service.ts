@@ -21,8 +21,8 @@ interface LoginResponse {
 export class AuthService {
 
   getToken(): string | null {
-    // Get the token from where you store it (localStorage, sessionStorage, etc.)
-    return localStorage.getItem('token');
+    const currentUser = this.currentUserValue;
+    return currentUser?.token || localStorage.getItem('token');
   }
   [x: string]: any;
   private apiUrl = 'http://localhost:3000/api';
@@ -125,6 +125,18 @@ export class AuthService {
     );
   }
 
+  /*checkAuthState() {
+    const currentUser = this.currentUserValue;
+    const token = this.getToken();
+    console.log('Current user:', currentUser);
+    console.log('Token exists:', !!token);
+    console.log('Is authenticated:', this.isLoggedIn());
+    return {
+      isAuthenticated: this.isLoggedIn(),
+      user: currentUser,
+      hasToken: !!token
+    };
+  }*/
   forgotPassword(email: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.apiUrl}/auth/forgot-password`, { email });
   }

@@ -64,7 +64,38 @@ async getAllUsers() {
     WHERE role = 'admin'
   `);
   return rows;
-}
+},
+async updatePreferences(userId, preferences) {
+  try {
+    const [result] = await pool.query(
+      'UPDATE users SET notification_preferences = ? WHERE id = ?',
+      [JSON.stringify(preferences), userId]
+    );
+    return result.affectedRows > 0;
+  } catch (error) {
+    console.error('Error updating user preferences:', error);
+    throw error;
+  }
+},
+
+// Update the findById method to include notification_preferences
+async findById(id) {
+  try {
+    const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
+    if (rows[0] && rows[0].notification_preferences) {
+      rows[0].notification_preferences = 
+        typeof rows[0].notification_preferences === 'string'
+          ? JSON.parse(rows[0].notification_preferences)
+          : rows[0].notification_preferences;
+    }
+    return rows[0];
+  } catch (error) {
+    console.error('Error in User.findById:', error);
+    throw error;
+  }
+},
+
+
 };
 
 module.exports = User;

@@ -1,6 +1,6 @@
 <div class="container-fluid tasks-container">
   <!-- Header Section -->
-  <div class="tasks-header mb-4">
+  <div class="tasks-header mb-4 ">
     <div class="row g-3">
     <div class="col-12 col-md-4 mb-2 mb-md-0">
       <h2 class="mb-0">Tasks Management</h2>
@@ -105,6 +105,7 @@
           </option>
         </select>
       </div>
+      
     </div>
   </div>
 
@@ -209,7 +210,7 @@
 
   <!-- Add Task Modal -->
   <ng-template #addTaskModal let-modal>
-    <div class="modal-header">
+    <div class="modal-header bg-primary text-white">
       <h5 class="modal-title">{{ editMode ? 'Edit Task' : 'Add New Task' }}</h5>
       <button type="button" class="btn-close" (click)="modal.dismiss('Cross click')" aria-label="Close"></button>
     </div>
@@ -313,7 +314,7 @@
           <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Cancel click')" [disabled]="taskForm.disabled">
             Cancel
           </button>
-          <button type="submit" class="btn btn-primary" [disabled]="taskForm.invalid || taskForm.disabled">
+          <button type="submit" class="btn btn-primary bg-primary" [disabled]="taskForm.invalid || taskForm.disabled">
             <span *ngIf="taskForm.disabled" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
             {{ editMode ? 'Update' : 'Create' }} Task
           </button>

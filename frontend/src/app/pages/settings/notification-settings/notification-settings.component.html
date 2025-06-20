@@ -35,7 +35,8 @@
       </div>
       <div class="form-check">
         <input class="form-check-input" type="checkbox" id="emailStatusUpdates" 
-               [formControl]="emailGroup.get('statusUpdates')">
+               [formControl]="emailStatusUpdates"
+               [disabled]="!settingsForm.get('email')?.get('enabled')?.value">
         <label class="form-check-label" for="emailStatusUpdates">Status updates</label>
       </div>
     </div>
@@ -49,7 +50,7 @@
             </div>
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" id="inAppEnabled" 
-                       [formControl]="inAppEnabled"
+                       [formControl]= "inAppEnabled"
                        (change)="onPreferenceChange('in_app')">
                 <label class="form-check-label" for="inAppEnabled"></label>
               </div>
@@ -74,8 +75,6 @@
           </div>
         </div>
 
-        <hr>
-
         <!-- Push Notifications -->
         <div class="notification-type">
           <div class="d-flex justify-content-between align-items-center mb-3">
@@ -89,6 +88,8 @@
                        (change)="onPushNotificationChange()">
                 <label class="form-check-label" for="pushEnabled"></label>
               </div>
+          </div>
+          <div class="ps-4" [class.text-muted]="!settingsForm.get('push')?.get('enabled')?.value">
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="pushTaskReminders" 
                    [formControl]="pushTaskReminders">

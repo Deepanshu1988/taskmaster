@@ -31,6 +31,8 @@ export class NotificationService {
   private ws!: WebSocket;
   sendTestNotification: any;
   toastr: any;
+  userService: any;
+  emailService: any;
 
   constructor(private http: HttpClient) {
   //  this.connectWebSocket();
@@ -224,6 +226,44 @@ export class NotificationService {
   ngOnDestroy() {
     if (this.ws) {
       this.ws.close();
+    }
+  }
+
+
+  // In your notification service
+  async sendTaskUpdateEmail(userId: string, taskData: any, updatedByUser: any) {
+    try {
+      const user = await this.userService.getUserById(userId);
+      const prefs = user.notification_preferences || {};
+      
+      if (!prefs.email?.enabled || !prefs.email?.taskUpdates) {
+        return { success: true, notificationSent: false };
+      }
+  
+      const updaterName = updatedByUser ? 
+        `${updatedByUser.firstName} ${updatedByUser.lastName}`.trim() : 
+        'A team member';
+  
+      const emailContent = `
+        <div>
+          <p>Hello ${user.firstName},</p>
+          <p>${updaterName} has updated the task: <strong>${taskData.title}</strong></p>
+          <!-- Add more task details here -->
+        </div>
+      `;
+  
+      // Send email using your email service
+      await this.emailService.sendEmail({
+        to: user.email,
+        subject: `Task Updated: ${taskData.title}`,
+        html: emailContent
+      });
+  
+      return { success: true, notificationSent: true };
+    } catch (error: unknown) {
+      console.error('Error sending task update email:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      return { success: false, error: errorMessage };
     }
   }
 }

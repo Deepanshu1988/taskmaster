@@ -2,7 +2,7 @@
   <div class="row justify-content-center">
     <div class="col-md-8">
       <div class="card">
-        <div class="card-header">
+        <div class="card-header bg-primary text-white">
           <h4 class="mb-0">Create New Project</h4>
         </div>
         <div class="card-body">
@@ -43,7 +43,8 @@
                 <div class="row">
                   <div class="col-md-6">
                     <p class="mb-1"><small class="text-muted">Created By</small></p>
-                    <p>{{ currentUser?.user?.username || 'Loading user...' }}</p>
+                  <!-- <pre>{{ currentUser | json }}</pre> -->
+                    <p>{{ currentUser?.username || 'Loading user...' }}</p>
                   </div>
                   <div class="col-md-6">
                     <p class="mb-1"><small class="text-muted">Created At</small></p>
@@ -55,19 +56,9 @@
 
             <!-- Form Actions -->
             <div class="d-flex justify-content-between">
-              <button 
-                type="button" 
-                class="btn btn-outline-secondary" 
-                [disabled]="isSubmitting"
-                (click)="onCancel()"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                class="btn btn-primary" 
-                [disabled]="projectForm.invalid || isSubmitting"
-              >
+              <button type="button" class="btn btn-outline-secondary mx-2" 
+              [disabled]="isSubmitting" (click)="onCancel()">Cancel</button>
+              <button type="submit" class="btn btn-primary" [disabled]="projectForm.invalid || isSubmitting">
                 <span *ngIf="!isSubmitting">Create Project</span>
                 <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                 <span *ngIf="isSubmitting" class="ms-2">Creating...</span>
@@ -75,9 +66,7 @@
             </div>
 
             <!-- Error Message -->
-            <div *ngIf="error" class="alert alert-danger mt-3 mb-0">
-              {{ error }}
-            </div>
+            <div *ngIf="error" class="alert alert-danger mt-3 mb-0">{{ error }}</div>
           </form>
         </div>
       </div>

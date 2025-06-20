@@ -1,23 +1,23 @@
 const User  = require('../models/userModel');
 const Notification = require('../models/notificationModel');
 const emailService = require('./emailService');
-//const userModel = require('../models/userModel');
+
 /**
  * Sends notifications when a task status changes
  * @param {Object} task - The task object
  * @param {string} oldStatus - The previous status of the task
  * @param {Object} updater - The user who made the change
  */
-const sendTaskStatusNotification = async (task, oldStatus, updater) => {
+async function sendTaskStatusNotification(task, oldStatus, updater) {
   try {
     console.log('\n--- Starting Notification Process ---');
     console.log('Task ID:', task.id);
     console.log('Task Title:', task.title);
     console.log('Old Status:', oldStatus);
     console.log('New Status:', task.status);
-    console.log('Updater ID:', updater.id);
-    console.log('Updater Role:', updater.role);
-    console.log('Updater Email:', updater.email);
+    console.log('Updater ID:', updater?.id);
+    console.log('Updater Role:', updater?.role);
+    console.log('Updater Email:', updater?.email);
     console.log('Task object:', JSON.stringify(task, null, 2));
     console.log('Updater object:', JSON.stringify(updater, null, 2));
     
@@ -92,15 +92,54 @@ if (updater.role !== 'admin') {
           }
         });
         console.log('Task progress:', task.progress, 'Type:', typeof task.progress);
-        console.log('Updater object keys:', Object.keys(updater || {}));
+        console.log('=== UPDATER OBJECT DEBUG ===');
+        console.log('Updater object:', JSON.stringify(updater, null, 2));
+        console.log('Updater properties:', Object.keys(updater || {}));
+        if (updater) {
+          console.log('Updater has username:', 'username' in updater);
+          console.log('Updater has name:', 'name' in updater);
+          console.log('Updater has first_name/last_name:', 'first_name' in updater || 'last_name' in updater);
+          console.log('Updater ID:', updater.id || 'No ID');
+        } else {
+          console.log('Updater is null or undefined');
+        }
+        console.log('=== END UPDATER DEBUG ===');
         
         // In the notification processing loop, before sending the email:
         const subject = `Task Status Updated: ${task.title}`;
+        
+        // Default updater name
+        let updaterName = 'System';
+        
+        // If we have an updater with ID, try to get their details
+        if (updater?.id) {
+          try {
+            const user = await User.findById(updater.id);
+            if (user) {
+              // Use name if available, otherwise use username, fallback to 'there'
+              updaterName = user.name || user.username || 'there';
+            }
+          } catch (error) {
+            console.error('Error fetching user details:', error);
+            // If there's an error, use the updater's username if available
+            updaterName = updater.username || 'there';
+          }
+        } else if (updater) {
+          // Fallback to direct properties if no ID but we have an updater object
+          updaterName = updater.username || updater.name || 'there';
+        }
+        
+        console.log('Final updater name to be used:', updaterName);
+        
+        // Get progress value, checking both lowercase and uppercase properties
+        const progressValue = task.progress ?? task.Progress;
+        console.log('Progress value to display:', progressValue);
+        
         const message = `
   Task: ${task.title || 'No title'}
   Status changed from: ${oldStatus || 'N/A'} to ${task.status || 'N/A'}
-  Progress: ${task.progress != null ? `${task.progress}%` : 'Not specified'}
-  Updated by: ${(updater && (updater.username || updater.name)) || 'System User'}
+  ${progressValue !== undefined ? `Progress: ${progressValue}%` : ''} 
+  Updated by: ${updaterName}
   ${task.description ? `\nDescription: ${task.description}` : ''}
   ${task.due_date ? `\nDue Date: ${new Date(task.due_date).toLocaleDateString()}` : ''}
   ${task.priority ? `\nPriority: ${task.priority}` : ''}

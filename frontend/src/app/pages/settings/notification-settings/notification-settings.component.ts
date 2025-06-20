@@ -48,6 +48,7 @@ export class NotificationSettingsComponent implements OnInit, OnDestroy {
     isTesting: boolean | undefined;
     activeModal: any;
   emailGroup: any;
+  authService: any;
 
   constructor(
     private fb: FormBuilder,
@@ -59,6 +60,7 @@ export class NotificationSettingsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    //console.log('Auth state:', this.authService.checkAuthState());
     this.loadUserPreferences();
   }
 
@@ -70,46 +72,28 @@ export class NotificationSettingsComponent implements OnInit, OnDestroy {
   private loadUserPreferences() {
     this.isLoading = true;
     
-    // Initialize the form if it doesn't exist
-    if (!this.settingsForm) {
-      this.settingsForm = this.createForm();
-    }
-
+    // Reset the form while loading
+    this.settingsForm = this.createForm();
+  
     this.userService.getCurrentUser().pipe(
       takeUntil(this.destroy$)
     ).subscribe({
-      next: (user: { notificationPreferences?: { email?: any; in_app?: any; push?: any; }; }) => {
-        if (user?.notificationPreferences) {
-          // Patch each section individually to avoid overwriting the entire form
-          const { email, in_app, push } = user.notificationPreferences;
-          
-          if (email) {
-            this.settingsForm.get('email')?.patchValue({
-              ...email,
-              enabled: email.enabled !== false // Default to true if not specified
-            });
-          }
-          
-          if (in_app) {
-            this.settingsForm.get('in_app')?.patchValue({
-              ...in_app,
-              enabled: in_app.enabled !== false // Default to true if not specified
-            });
-          }
-          
-          if (push) {
-            this.settingsForm.get('push')?.patchValue({
-              ...push,
-              enabled: push.enabled === true // Default to false if not specified
-            });
-          }
+      next: (user: any) => {
+        if (user?.notification_preferences) {
+          console.log('Loading user preferences:', user.notification_preferences);
+          this.settingsForm.patchValue({
+            email: user.notification_preferences.email || this.defaultPreferences.email,
+            in_app: user.notification_preferences.in_app || this.defaultPreferences.in_app,
+            push: user.notification_preferences.push || this.defaultPreferences.push
+          }, { emitEvent: false });
+        } else {
+          console.log('No saved preferences found, using defaults');
         }
         this.isLoading = false;
       },
-      error: (error: any) => {
+      error: (error) => {
         console.error('Error loading user preferences:', error);
         this.isLoading = false;
-        this.notificationService.showError('Failed to load notification preferences');
       }
     });
   }
@@ -175,8 +159,8 @@ get pushMentions(): FormControl {
       }),
       push: this.fb.group({
         enabled: [false],
-        taskReminders: [{value: false, disabled: true}],
-        mentions: [{value: false, disabled: true}]
+        taskReminders: [{value: false, disabled: false}],
+        mentions: [{value: false, disabled: false}]
       })
     });
 
@@ -188,7 +172,32 @@ get pushMentions(): FormControl {
 
     return form;
   }
-
+  shouldSendEmailNotification(notificationType: string): boolean {
+    const emailEnabled = this.settingsForm.get('email.enabled')?.value;
+    const statusUpdatesEnabled = this.settingsForm.get('email.statusUpdates')?.value;
+    
+    // Don't send email if email notifications are disabled
+    if (!emailEnabled) {
+      return false;
+    }
+    
+    // For status updates, check if status updates are enabled
+    if (notificationType === 'status_update' && !statusUpdatesEnabled) {
+      return false;
+    }
+    
+    return true;
+  }
+  
+  // Example usage when sending a notification
+  sendNotification(notificationType: string, data: any) {
+    if (this.shouldSendEmailNotification(notificationType)) {
+      // Your email sending logic here
+      console.log('Sending email notification:', notificationType, data);
+    } else {
+      console.log('Email notification skipped - status updates disabled or email notifications off');
+    }
+  }
   private setupFormValueChanges(form: FormGroup): void {
     // Handle email group
     const emailGroup = form.get('email') as FormGroup;
@@ -278,67 +287,35 @@ get pushMentions(): FormControl {
     if (this.settingsForm.invalid || this.isSaving) {
       return;
     }
-
+  
     this.isSaving = true;
     const preferences = this.settingsForm.getRawValue();
     
-    console.log('Saving preferences:', preferences);
+    // Ensure status updates are disabled if email is disabled
+    if (!preferences.email.enabled) {
+      preferences.email.statusUpdates = false;
+    }
   
     this.userService.updateNotificationPreferences(preferences)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (response: any) => {
-          console.log('Save successful, response:', response);
+        next: (response) => {
           this.isSaving = false;
-          
-          // Show success message
           this.notificationService.showSuccess('Notification preferences saved successfully');
-          
-          // Update the form with the saved preferences from the response
-          const savedPrefs = response?.data?.notification_preferences || response?.notificationPreferences;
-          
-          if (savedPrefs) {
-            // Parse if it's a string
-            const prefs = typeof savedPrefs === 'string' ? JSON.parse(savedPrefs) : savedPrefs;
-            
-            this.settingsForm.patchValue({
-              email: {
-                ...(prefs.email || this.defaultPreferences.email),
-                enabled: prefs.email?.enabled ?? true
-              },
-              in_app: {
-                ...(prefs.in_app || this.defaultPreferences.in_app),
-                enabled: prefs.in_app?.enabled ?? true
-              },
-              push: {
-                ...(prefs.push || this.defaultPreferences.push),
-                enabled: prefs.push?.enabled ?? false
-              }
-            }, { emitEvent: false });
-          }
-          
-          // Mark form as pristine since we just saved
-          this.settingsForm.markAsPristine();
-          
-          // Close the modal after a short delay to show the success message
-          setTimeout(() => {
-            this.dismissModal();
-          }, 500);
+          this.modalService.dismissAll();
         },
-        error: (error: any) => {
-          console.error('Error saving notification preferences:', error);
+        error: (error) => {
+          console.error('Error saving settings:', error);
           this.isSaving = false;
-          
-          // Show error message to user
-          const errorMessage = error?.message || 'Failed to save notification preferences';
+          const errorMessage = error?.error?.message || error?.message || 'Failed to save preferences';
           this.notificationService.showError(errorMessage);
         }
       });
   }
-
   dismissModal() {
+    
     if (this.modalService.hasOpenModals()) {
-      this.modalService.dismissAll();
+      this.modalService.dismissAll('Preferences saved');
     }
   }
 

@@ -10,8 +10,11 @@ router.get('/', userController.getUsers);
 router.get('/:id', userController.getUser);
 router.put('/:id', userController.updateUser);
 //router.put('/:id', userController.editUser);
+// In your user routes
+router.put('/:id', 
+  userController.updateUserPreferences
+);
 router.put('/:id/preferences', userController.updateUserPreferences);
-
 router.delete('/:id', userController.deleteUser);
 router.post('/', userController.createUser);  // createUser
 //router.post('/login', userController.loginUser);  // loginUser

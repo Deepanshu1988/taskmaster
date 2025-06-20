@@ -1,7 +1,6 @@
 const User = require('../models/userModel');
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
-
 exports.createUser = async (req, res) => {
   try {
     console.log('Received user data:', req.body);
@@ -228,27 +227,85 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
+// update the updateUserPreferences function:
 exports.updateUserPreferences = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { notificationPreferences } = req.body;
+    const notificationPreferences = req.body.notification_preferences;
 
-    // Update user preferences in the database
-    await pool.query(
-      'UPDATE users SET notification_preferences = ? WHERE id = ?',
-      [JSON.stringify(notificationPreferences), userId]
-    );
+    // Update the user's preferences in the database
+    const updated = await User.updatePreferences(userId, notificationPreferences);
+    
+    if (!updated) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
 
+    // Get the updated user with their preferences
+    const user = await User.findById(userId);
+    
     res.json({ 
       success: true, 
       message: 'Preferences updated successfully',
-      notificationPreferences
+      data: {
+        notification_preferences: user.notification_preferences
+      }
     });
   } catch (error) {
     console.error('Error updating preferences:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Failed to update preferences' 
+      message: 'Failed to update preferences',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+exports.sendNotification = async (req, res) => {
+  try {
+    const { userId, type, data } = req.body;
+    
+    // Get user preferences
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const prefs = user.notification_preferences || {};
+    
+    // Check if email notifications are enabled
+    if (!prefs.email?.enabled) {
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Email notifications are disabled',
+        notificationSent: false
+      });
+    }
+
+    // For status updates, check if they're enabled
+    if (type === 'status_update' && !prefs.email?.statusUpdates) {
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Status update emails are disabled',
+        notificationSent: false
+      });
+    }
+
+    // If we get here, send the notification
+    // Your notification sending logic here
+    
+    res.json({ 
+      success: true, 
+      message: 'Notification sent successfully',
+      notificationSent: true
+    });
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to send notification',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };

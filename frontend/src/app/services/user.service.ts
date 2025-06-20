@@ -31,77 +31,102 @@ export class UserService {
   // Get current user with preferences
   getCurrentUser(): Observable<any> {
     const currentUser = this.authService.currentUserValue;
-    if (!currentUser?.user?.id) {
+    const userId = currentUser?.user?.id || currentUser?.id;
+    
+    if (!userId) {
       return of(null);
     }
-
-    return this.http.get<any>(
-      `${this.apiUrl}/${currentUser.user.id}`,
-      { headers: this.getAuthHeaders() }
-    ).pipe(
-      map((response: any) => {
+  
+    return this.http.get<any>(`${this.apiUrl}/${userId}`, {
+      headers: this.getAuthHeaders()
+    }).pipe(
+      map(response => {
         const userData = response.success ? response.data : response;
-        return {
-          ...userData,
-          notificationPreferences: userData.notificationPreferences || {
-            email: { enabled: true, taskReminders: true, dueDateAlerts: true, statusUpdates: true },
-            in_app: { enabled: true, taskReminders: true, mentions: true, statusUpdates: true },
-            push: { enabled: false, taskReminders: false, mentions: false }
+        // Ensure notification_preferences is properly formatted
+        if (userData.notification_preferences && typeof userData.notification_preferences === 'string') {
+          try {
+            userData.notification_preferences = JSON.parse(userData.notification_preferences);
+          } catch (e) {
+            console.error('Error parsing notification_preferences:', e);
+            userData.notification_preferences = this.getDefaultPreferences();
           }
-        };
+        } else if (!userData.notification_preferences) {
+          userData.notification_preferences = this.getDefaultPreferences();
+        }
+        return userData;
       }),
       catchError(error => {
         console.error('Error fetching current user:', error);
-        return of(null);
+        return of({ notification_preferences: this.getDefaultPreferences() });
       })
     );
+  }
+  
+  private getDefaultPreferences() {
+    return {
+      email: { enabled: true, taskReminders: true, dueDateAlerts: true, statusUpdates: true },
+      in_app: { enabled: true, taskReminders: true, mentions: true, statusUpdates: true },
+      push: { enabled: false, taskReminders: false, mentions: false }
+    };
   }
 
   // Update notification preferences
   updateNotificationPreferences(preferences: any): Observable<any> {
+    console.log('Current User:', this.authService.currentUserValue);
+  console.log('Token exists:', !!this.authService.getToken());
+  console.log('Token value:', this.authService.getToken());
     const currentUser = this.authService.currentUserValue;
-    if (!currentUser?.user?.id) {
-      return throwError(() => new Error('No current user found'));
-    }
-    
-    // Stringify the preferences object
-    const preferencesToSend = {
-      notification_preferences: JSON.stringify(preferences)
-    };
-    
-    console.log('Saving preferences:', preferencesToSend);
+    console.log('Current user object:', JSON.stringify(currentUser, null, 2));
+     // Check if user data is in the expected structure
+  const userId = currentUser?.user?.id || currentUser?.id;
+  console.log('Extracted user ID:', userId); // Add this line
   
+  if (!userId) {
+    console.error('No user ID found in:', currentUser);
+    return throwError(() => new Error('No user is logged in'));
+  }
+  
+    // Get the token
+    const token = this.authService.getToken();
+    if (!token) {
+      return throwError(() => new Error('No authentication token found'));
+    }
+  
+    // Include token in request headers
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    });
+    console.log('Sending request to:', `${this.apiUrl}/${userId}/preferences`);
     return this.http.put<any>(
-      `${this.apiUrl}/${currentUser.user.id}/preferences`,
-      preferencesToSend,
-      { 
-        headers: this.getAuthHeaders(),
-        observe: 'response' // Get full response including status and headers
-      }
+      `${this.apiUrl}/${userId}/preferences`,
+      { notification_preferences: preferences },
+      { headers }
     ).pipe(
-      tap(response => {
-        console.log('Preferences saved successfully:', response);
-        // Update the current user in auth service if needed
-        if (response.body?.data) {
-          const updatedUser = { ...currentUser };
-          updatedUser.user = {
-            ...updatedUser.user,
-            notification_preferences: preferences // Store as object in memory
+      map(response => {
+        if (response.success && response.data) {
+          // Update the current user in auth service and local storage
+          const updatedUser = {
+            ...currentUser,
+            notification_preferences: response.data.notification_preferences
           };
-          this.authService['updateCurrentUser'](updatedUser.user);
+          
+          // Update local storage
+          localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+          
+          // Update the current user in the auth service
+          this.authService['currentUserSubject'].next(updatedUser);
+          
+          return response;
         }
+        return response;
       }),
-      map(response => response.body), // Return just the body for the component
       catchError(error => {
         console.error('Error updating preferences:', error);
-        return throwError(() => ({
-          message: error.error?.message || 'Failed to update preferences',
-          error: error.error
-        }));
+        return throwError(error);
       })
     );
   }
-
  // Get current user with preferences
  /*getCurrentUser(): Observable<any> {
   const currentUser = this.authService.currentUserValue;

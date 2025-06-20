@@ -439,7 +439,10 @@ progress: newProgress
     }
 
     // Get the updated task with all details
-    const updatedTask = await Task.findById(taskId);
+    const updatedTask = await Task.update(taskId, {
+      // ... other updates
+      updatedBy: req.user.id // Make sure to include the user who made the update
+    });
     console.log('Sending notification with task:', JSON.stringify(updatedTask, null, 2));
 console.log('Updater info:', JSON.stringify(req.user, null, 2));
     // Send notifications in the background (don't wait for it to complete)
