@@ -20,7 +20,7 @@
               style="border-radius: 20px;"
             >
           </div>
-        <button class="btn btn-primary flex-shrink-0 d-inline-flex align-items-center justify-content-center" (click)="openAddTaskModal()">
+        <button *ngIf="isAdmin" class="btn btn-primary flex-shrink-0 d-inline-flex align-items-center justify-content-center" (click)="openAddTaskModal()">
           <i class="fas fa-plus me-2"></i>Add Task
         </button>
       </div>
@@ -97,7 +97,7 @@
           </option>
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-3" *ngIf="isAdmin">
         <select class="form-select" [(ngModel)]="selectedAssignee" (change)="filterTasks()">
           <option value="">All Assignees</option>
           <option *ngFor="let user of users" [value]="user.id">
@@ -194,7 +194,7 @@
                       <button class="btn btn-sm btn-outline-success" (click)="updateStatus(task, 'completed')" *ngIf="task.status !== 'completed'">
                         <i class="fas fa-check"></i>
                       </button>
-                      <button class="btn btn-sm btn-outline-danger" (click)="deleteTask(task)" >
+                      <button class="btn btn-sm btn-outline-danger" (click)="deleteTask(task)" *ngIf="isAdmin">
                         <i class="fas fa-trash"></i>
                       </button>
                     </div>
@@ -222,7 +222,7 @@
         
         <div class="mb-3">
           <label for="title" class="form-label">Title</label>
-          <input type="text" class="form-control" id="title" formControlName="title" required>
+          <input type="text" class="form-control" id="title" formControlName="title" [readonly]="!isAdmin && editMode" required>
           <div *ngIf="taskForm.get('title')?.invalid && taskForm.get('title')?.touched" class="text-danger">
             Title is required
           </div>
@@ -230,7 +230,7 @@
         
         <div class="mb-3">
           <label for="description" class="form-label">Description</label>
-          <textarea class="form-control" id="description" formControlName="description" rows="3" required></textarea>
+          <textarea class="form-control" id="description" formControlName="description" rows="3" [readonly]="!isAdmin && editMode" required></textarea>
           <div *ngIf="taskForm.get('description')?.invalid && taskForm.get('description')?.touched" class="text-danger">
             Description is required
           </div>
@@ -239,7 +239,7 @@
         <div class="row">
           <div class="col-md-6 mb-3">
             <label for="project_id" class="form-label">Project</label>
-            <select class="form-select" id="project_id" formControlName="project_id" required>
+            <select class="form-select" id="project_id" formControlName="project_id" required [class.readonly-field]="!isAdmin && editMode">
               <option value="" disabled>Select Project</option>
               <option *ngFor="let project of projects" [value]="project.id">
                 {{ project.name }}
@@ -252,11 +252,11 @@
           
           <div class="col-md-6 mb-3">
             <label for="assigned_to" class="form-label">Assign To</label>
-            <select class="form-select" id="assigned_to" formControlName="assigned_to" required>
+            <select class="form-select" id="assigned_to" formControlName="assigned_to" required [class.readonly-field]="!isAdmin && editMode">
               <p *ngIf="users && users.length > 0">Users Loaded: {{ users.length }}</p>
               <option value="" disabled>Select Assignee</option>
               <option *ngFor="let user of users" [value]="user.id">
-                {{ user.username }} ({{ user.email }}) - {{ user.role }}
+                {{ user.username }}
               </option>
             </select>
             <div *ngIf="taskForm.get('assigned_to')?.invalid && taskForm.get('assigned_to')?.touched" class="text-danger">
@@ -279,20 +279,93 @@
             <label for="status" class="form-label">Status</label>
             <select class="form-select" id="status" formControlName="status" required>
               <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
+              <option value="in_progress">In_Progress</option>
               <option value="completed">Completed</option>
             </select>
           </div>
         </div>
-        
+        <div class="mb-3">
+          <label for="comments" class="form-label">Comments</label>
+          <textarea 
+            class="form-control" 
+            id="comments" 
+            formControlName="comments"
+            rows="3" 
+            >
+          </textarea>
+        </div>
         <div class="mb-3">
           <label for="dueDate" class="form-label">Due Date</label>
-          <input type="date" class="form-control" id="dueDate" formControlName="dueDate" required>
+          <input type="date" class="form-control" id="dueDate" formControlName="dueDate" [readonly]="!isAdmin && editMode" required>
           <div *ngIf="taskForm.get('dueDate')?.invalid && taskForm.get('dueDate')?.touched" class="text-danger">
             Please select a due date
           </div>
         </div>
         
+    <!--    <div class="mb-3">
+          <label class="form-label">Attachments</label>
+          <div class="file-upload-container">
+            <div class="input-group">
+              <input type="file" 
+                     class="form-control" 
+                     id="fileInput" 
+                     multiple
+                     (change)="onFileSelected($event, taskForm.value.id || 0)"
+                     #fileInput>
+            </div>
+            
+             Selected files list 
+            <div class="selected-files mt-2" *ngIf="selectedFiles.length > 0">
+              <div class="list-group">
+                <div class="list-group-item" *ngFor="let file of selectedFiles; let i = index">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                      <i class="bi me-2" [ngClass]="getFileIcon(file)"></i>
+                      <div>
+                        <div class="fw-medium">{{ file.name }}</div>
+                        <small class="text-muted">{{ file.size / 1024 / 1024 | number:'1.2-2' }} MB</small>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeSelectedFile(i)">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            Upload progress 
+            <div *ngIf="isUploading" class="mt-2">
+              <div class="progress" style="height: 5px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" 
+                     [style.width]="uploadProgress + '%'"
+                     [attr.aria-valuenow]="uploadProgress"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                </div>
+              </div>
+              <div class="text-end small text-muted mt-1">
+                Uploading... {{ uploadProgress }}%
+              </div>
+            </div>
+            
+            Upload message 
+            <div *ngIf="uploadMessage" class="alert mt-2" 
+                 [ngClass]="{
+                   'alert-success': uploadMessageType === 'success',
+                   'alert-danger': uploadMessageType === 'error',
+                   'alert-info': uploadMessageType === 'info'
+                 }">
+              <i class="bi" [ngClass]="{
+                   'bi-check-circle': uploadMessageType === 'success',
+                   'bi-exclamation-triangle': uploadMessageType === 'error',
+                   'bi-info-circle': uploadMessageType === 'info'
+                 }"></i>
+              {{ uploadMessage }}
+            </div>
+          </div>
+        </div>-->
         <div class="mb-3">
           <label for="progress" class="form-label">Progress</label>
           <input type="number" 
@@ -310,6 +383,7 @@
           </div>
           <div class="form-text">Current Progress: {{ taskForm.get('progress')?.value || 0 }}%</div>
         </div>
+        
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Cancel click')" [disabled]="taskForm.disabled">
             Cancel

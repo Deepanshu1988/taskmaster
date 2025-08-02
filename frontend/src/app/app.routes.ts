@@ -1,4 +1,4 @@
-﻿import { Routes } from '@angular/router';
+import { Routes } from '@angular/router';
 import { LoginComponent } from './pages/login/login.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { TasksComponent } from './pages/tasks/tasks.component';
@@ -10,6 +10,10 @@ import { UserFormComponent } from './pages/users/user-form/user-form.component';
 import { ForgotPasswordComponent } from './pages/forgot-password/forgot-password.component';
 import { DepartmentManagementComponent } from './pages/department-management/department-management.component';
 import { DepartmentsComponent } from './pages/departments/departments.component';
+import { ReportsComponent } from './pages/reports/reports.component';
+import { TaskAttachmentsComponent } from './pages/tasks/task-attachments/task-attachments.component';
+import { ResetPasswordComponent } from './pages/auth/reset-password/reset-password.component';
+
 
 export const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
@@ -64,6 +68,21 @@ export const routes: Routes = [
     component: DepartmentsComponent,
     canActivate: [AuthGuard]
   },
-
+  {
+    path: 'tasks/attachments',
+    component: TaskAttachmentsComponent,
+    canActivate: [AuthGuard]
+  },
+  { 
+    path: 'reports', 
+    component: ReportsComponent,
+    canActivate: [AuthGuard]
+  },
+  { 
+    path: 'reset-password', 
+    component: ResetPasswordComponent,
+    data: { noAuth: true } 
+  },
+  //{ path: 'reports/:id', component: ReportsComponent },
   { path: '**', redirectTo: '/dashboard' }
 ];

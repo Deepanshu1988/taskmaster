@@ -1,0 +1,86 @@
+.table th {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  color: #6c757d;
+  border-top: none;
+  border-bottom: 1px solid #e9ecef;
+  padding: 1rem 1.5rem;
+}
+
+.table td {
+  vertical-align: middle;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f8f9fa;
+}
+
+.table-hover tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.badge {
+  font-weight: 500;
+  padding: 0.35em 0.65em;
+  font-size: 0.75em;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 0.2rem;
+}
+
+.btn-outline-primary, .btn-outline-danger {
+  border-width: 1px;
+}
+
+.btn-group .btn {
+  margin-right: 0.25rem;
+}
+
+.btn-group .btn:last-child {
+  margin-right: 0;
+}
+
+.card {
+  border: none;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.card-body {
+  padding: 0;
+}
+
+.table-responsive {
+  overflow: visible;
+}
+
+/* Status badges */
+.bg-success {
+  background-color: #198754 !important;
+}
+
+.bg-warning {
+  background-color: #ffc107 !important;
+  color: #212529 !important;
+}
+
+.bg-secondary {
+  background-color: #6c757d !important;
+}
+
+.bg-danger {
+  background-color: #dc3545 !important;
+}
+
+/* Empty state */
+.text-muted {
+  color: #6c757d !important;
+}
+
+.fa-inbox {
+  opacity: 0.5;
+}

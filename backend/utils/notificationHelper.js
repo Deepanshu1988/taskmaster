@@ -3,83 +3,126 @@ const Notification = require('../models/notificationModel');
 const emailService = require('./emailService');
 
 /**
- * Sends notifications when a task status changes
- * @param {Object} task - The task object
+ * Sends notifications when a task status or progress changes
+ * @param {Object} task - The task object (with oldProgress in metadata if progress changed)
  * @param {string} oldStatus - The previous status of the task
  * @param {Object} updater - The user who made the change
+ * @param {string} [comment] - Optional comment about the update
+ * @param {boolean} [statusChanged] - Whether the status was changed
+ * @param {boolean} [progressChanged] - Whether the progress was changed
  */
-async function sendTaskStatusNotification(task, oldStatus, updater) {
+async function sendTaskStatusNotification(task, oldStatus, updater, comment = '', statusChanged = true, progressChanged = false) {
+  const logPrefix = '[NOTIFICATION]';
+  
+  console.log(`\n${logPrefix} ======== Starting Notification Process ========`);
+  console.log(`${logPrefix} Task ID: ${task?.id}, Title: ${task?.title}`);
+  if (statusChanged) {
+    console.log(`${logPrefix} Status Change: ${oldStatus} -> ${task?.status}`);
+  }
+  if (progressChanged && task.oldProgress !== undefined) {
+    console.log(`${logPrefix} Progress Change: ${task.oldProgress}% -> ${task.progress}%`);
+  }
+  console.log(`${logPrefix} Updater: ${updater?.id} (${updater?.role}) - ${updater?.email}`);
+  if (comment) {
+    console.log(`${logPrefix} Comment: ${comment}`);
+  }
+  
   try {
-    console.log('\n--- Starting Notification Process ---');
-    console.log('Task ID:', task.id);
-    console.log('Task Title:', task.title);
-    console.log('Old Status:', oldStatus);
-    console.log('New Status:', task.status);
-    console.log('Updater ID:', updater?.id);
-    console.log('Updater Role:', updater?.role);
-    console.log('Updater Email:', updater?.email);
-    console.log('Task object:', JSON.stringify(task, null, 2));
-    console.log('Updater object:', JSON.stringify(updater, null, 2));
-    
+    // Validate inputs
     if (!updater || !updater.id) {
-      console.error('Invalid updater object:', updater);
-      return;
+      console.error(`${logPrefix} ERROR: Invalid updater object:`, JSON.stringify(updater));
+      return { success: false, error: 'Invalid updater' };
+    }
+
+    if (!task || !task.id) {
+      console.error(`${logPrefix} ERROR: Invalid task object:`, JSON.stringify(task));
+      return { success: false, error: 'Invalid task' };
     }
 
     const notificationRecipients = [];
     
     // If regular user is updating, notify all admins
-    // Then in the sendTaskStatusNotification function:
-// Temporary workaround - get all users and filter for admins
-// Then in the sendTaskStatusNotification function:
-if (updater.role !== 'admin') {
-  console.log('Regular user updating - finding all admins');
-  try {
-    const admins = await User.getAllUsers();
-    console.log('Found admins:', admins);
-    
-    admins.forEach(admin => {
-      if (admin.id.toString() !== updater.id.toString()) {
-        notificationRecipients.push({
-          userId: admin.id,
-          email: admin.email,
-          name: admin.username
+    if (updater.role !== 'admin' ) {
+      console.log(`${logPrefix} Regular user updating - finding all admins`);
+      try {
+        console.log(`${logPrefix} Fetching all users...`);
+        const allUsers = await User.getAllUsers();
+        console.log(`${logPrefix} Found ${allUsers?.length || 0} users total`);
+        
+        const admins = allUsers.filter(user => {
+          const isAdmin = user.role === 'admin' && user.id.toString() !== updater.id.toString();
+          console.log(`${logPrefix} User ${user.id} (${user.email}): role=${user.role}, isAdmin=${isAdmin}`);
+          return isAdmin;
         });
-      }
-    });
-  } catch (error) {
-    console.error('Error finding admins:', error);
-  }
-}
-   // If admin is updating, notify the assignee (regular user)
-   else if (task.assigned_to) {
-    console.log('Admin updating - notifying assignee');
-    try {
-      const assignee = await User.findById(task.assigned_to);
-      if (assignee && assignee.id.toString() !== updater.id.toString()) {
-        notificationRecipients.push({
-          userId: assignee.id,
-          email: assignee.email,
-          name: assignee.username
+        
+        console.log(`${logPrefix} Found ${admins.length} admins to notify`);
+        
+        admins.forEach(admin => {
+          notificationRecipients.push({
+            userId: admin.id,
+            email: admin.email,
+            name: admin.username || 'Admin'
+          });
         });
+      } catch (error) {
+        console.error(`${logPrefix} ERROR in finding admins:`, error);
+        return { success: false, error: 'Error finding admins', details: error.message };
       }
-    } catch (error) {
-      console.error('Error finding assignee:', error);
     }
-  }
+    // If admin is updating, notify the assignee (regular user)
+    else if (task.assigned_to) {
+      console.log(`${logPrefix} Admin updating - notifying assignee ${task.assigned_to}`);
+      try {
+        const assignee = await User.findById(task.assigned_to);
+        if (!assignee) {
+          console.error(`${logPrefix} Assignee ${task.assigned_to} not found`);
+        } else {
+          console.log(`${logPrefix} Found assignee:`, assignee.email);
+          if (assignee.id.toString() !== updater.id.toString()) {
+            notificationRecipients.push({
+              userId: assignee.id,
+              email: assignee.email,
+              name: assignee.username || 'User'
+            });
+          } else {
+            console.log(`${logPrefix} Assignee is the same as updater, skipping notification`);
+          }
+        }
+      } catch (error) {
+        console.error(`${logPrefix} ERROR in finding assignee:`, error);
+        return { success: false, error: 'Error finding assignee', details: error.message };
+      }
+    }
+
+    console.log(`${logPrefix} Final notification recipients:`, notificationRecipients.map(r => r.email));
     
-    
-  console.log('Final notification recipients:', notificationRecipients);
+    if (notificationRecipients.length === 0) {
+      console.log(`${logPrefix} WARNING: No recipients to notify`);
+      return { success: false, error: 'No recipients to notify' };
+    }
     
     // Process notifications for all recipients
+    const results = [];
     for (const recipient of notificationRecipients) {
-
+      const recipientLog = `${logPrefix} [${recipient.email}]`;
       try {
+        console.log(`\n${recipientLog} Processing notification...`);
+        
+        let notificationMessage = '';
+        if (statusChanged && progressChanged) {
+          notificationMessage = `Task "${task.title}" status changed from ${oldStatus} to ${task.status} and progress updated from ${task.oldProgress}% to ${task.progress}%`;
+        } else if (statusChanged) {
+          notificationMessage = `Status of task "${task.title}" was changed from ${oldStatus} to ${task.status}`;
+        } else if (progressChanged) {
+          notificationMessage = `Progress of task "${task.title}" was updated from ${task.oldProgress}% to ${task.progress}%`;
+        }
+        
         // Create notification in database
-        await Notification.create({
+        console.log(`${recipientLog} Creating database notification...`);
+        const notification = await Notification.create({
           userId: recipient.userId,
           title: 'Task Status Updated',
-          message: `Status of task "${task.title}" was changed from ${oldStatus} to ${task.status}`,
+          message: notificationMessage,
           type: 'email',
           status: 'unread',
           related_entity: 'task',
@@ -87,83 +130,69 @@ if (updater.role !== 'admin') {
           metadata: {
             old_status: oldStatus,
             new_status: task.status,
-            progress: task.progress,
             updated_by: updater.id
           }
         });
-        console.log('Task progress:', task.progress, 'Type:', typeof task.progress);
-        console.log('=== UPDATER OBJECT DEBUG ===');
-        console.log('Updater object:', JSON.stringify(updater, null, 2));
-        console.log('Updater properties:', Object.keys(updater || {}));
-        if (updater) {
-          console.log('Updater has username:', 'username' in updater);
-          console.log('Updater has name:', 'name' in updater);
-          console.log('Updater has first_name/last_name:', 'first_name' in updater || 'last_name' in updater);
-          console.log('Updater ID:', updater.id || 'No ID');
-        } else {
-          console.log('Updater is null or undefined');
-        }
-        console.log('=== END UPDATER DEBUG ===');
-        
-        // In the notification processing loop, before sending the email:
-        const subject = `Task Status Updated: ${task.title}`;
-        
-        // Default updater name
-        let updaterName = 'System';
-        
-        // If we have an updater with ID, try to get their details
-        if (updater?.id) {
-          try {
-            const user = await User.findById(updater.id);
-            if (user) {
-              // Use name if available, otherwise use username, fallback to 'there'
-              updaterName = user.name || user.username || 'there';
-            }
-          } catch (error) {
-            console.error('Error fetching user details:', error);
-            // If there's an error, use the updater's username if available
-            updaterName = updater.username || 'there';
-          }
-        } else if (updater) {
-          // Fallback to direct properties if no ID but we have an updater object
-          updaterName = updater.username || updater.name || 'there';
-        }
-        
-        console.log('Final updater name to be used:', updaterName);
-        
-        // Get progress value, checking both lowercase and uppercase properties
-        const progressValue = task.progress ?? task.Progress;
-        console.log('Progress value to display:', progressValue);
-        
-        const message = `
-  Task: ${task.title || 'No title'}
-  Status changed from: ${oldStatus || 'N/A'} to ${task.status || 'N/A'}
-  ${progressValue !== undefined ? `Progress: ${progressValue}%` : ''} 
-  Updated by: ${updaterName}
-  ${task.description ? `\nDescription: ${task.description}` : ''}
-  ${task.due_date ? `\nDue Date: ${new Date(task.due_date).toLocaleDateString()}` : ''}
-  ${task.priority ? `\nPriority: ${task.priority}` : ''}
-  
-  You can view the task for more details.
-  
-  Thank you,
-  The TaskMaster Team
-`;
+        console.log(`${recipientLog} Notification created with ID:`, notification?.id);
 
-        // Then send the email
-await emailService.sendNotificationEmail(recipient.email, subject, message);
+        // Prepare email
+        const emailSubject = `Task Updated: ${task.title}`;
+        const emailText = `Hello ${recipient.name || 'there'},\n\n` +
+          `The task "${task.title}" has been updated by ${updater.username || 'a user'}.\n\n` +
+          `Status changed from: ${oldStatus} to ${task.status}\n` +
+          `Task: ${task.title}\n` +
+          (task.description ? `Description: ${task.description}\n` : '') +
+          (task.due_date ? `Due Date: ${new Date(task.due_date).toLocaleDateString()}\n` : '') +
+          //(comment ? `\nUpdate Note: ${comment}\n` : '') +
+          `\nYou can view the task for more details.\n\n` +
+          `Thank you,\nThe TaskMaster Team`;
 
-        console.log(`Notification sent to ${recipient.email}`);
+        console.log(`${recipientLog} Sending email...`);
+        console.log(`${recipientLog} To: ${recipient.email}`);
+        console.log(`${recipientLog} Subject: ${emailSubject}`);
+        
+        // Send email
+        const emailResult = await emailService.sendNotificationEmail(
+          recipient.email,
+          emailSubject,
+          emailText
+        );
+        
+        console.log(`${recipientLog} Email sent successfully`);
+        results.push({ 
+          success: true, 
+          recipient: recipient.email,
+          notificationId: notification?.id 
+        });
       } catch (error) {
-        console.error(`Error sending notification to ${recipient.email}:`, error);
-        // Continue with other recipients even if one fails
+        const errorMsg = `Error sending to ${recipient.email}: ${error.message}`;
+        console.error(`${recipientLog} ${errorMsg}`, error);
+        results.push({ 
+          success: false, 
+          recipient: recipient.email,
+          error: errorMsg 
+        });
       }
     }
+    
+    const successCount = results.filter(r => r.success).length;
+    console.log(`\n${logPrefix} ======== Notification Process Complete ========`);
+    console.log(`${logPrefix} Successfully sent ${successCount} of ${results.length} notifications`);
+    
+    return { 
+      success: successCount > 0, 
+      results 
+    };
   } catch (error) {
-    console.error('Error in sendTaskStatusNotification:', error);
-    // Don't throw the error as we don't want to fail the main operation
+    const errorMsg = `Critical error in notification process: ${error.message}`;
+    console.error(`${logPrefix} ${errorMsg}`, error);
+    return { 
+      success: false, 
+      error: errorMsg,
+      stack: error.stack 
+    };
   }
-};
+}
 
 module.exports = {
   sendTaskStatusNotification

@@ -50,6 +50,11 @@ export class AuthService {
     return this.loading;
   }
 
+  public get isAdmin(): boolean {
+    const currentUser = this.currentUserValue;
+    return currentUser && currentUser.user && currentUser.user.role === 'admin';
+  }
+
   private handleAuthError(error: any): Observable<never> {
     if (error.status === 401 || error.error?.name === 'TokenExpiredError') {
       // Clear the expired token and user data
@@ -137,16 +142,21 @@ export class AuthService {
       hasToken: !!token
     };
   }*/
-  forgotPassword(email: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.apiUrl}/auth/forgot-password`, { email });
-  }
-
-  resetPassword(token: string, newPassword: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.apiUrl}/auth/reset-password`, { 
-      token, 
-      newPassword 
-    });
-  }
+    forgotPassword(email: string): Observable<{ message: string }> {
+      return this.http.post<{ message: string }>(`${this.apiUrl}/auth/forgot-password`, { email });
+    }
+    
+    resetPassword(token: string, newPassword: string): Observable<{ message: string }> {
+      return this.http.post<{ message: string }>(`${this.apiUrl}/auth/reset-password`, { 
+        token, 
+        newPassword  // Make sure this matches the backend's expected field name
+      }).pipe(
+        catchError(error => {
+          console.error('Reset password error:', error);
+          return throwError(() => error);
+        })
+      );
+    }
 
   logout() {
     // Remove user data and token from local storage

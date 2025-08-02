@@ -1,0 +1,137 @@
+.report-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: center;
+  background: #f7f7fa;
+  padding: 1.2rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.report-filters label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.report-filters select,
+.report-filters input[type="date"] {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.report-filters button {
+  padding: 0.4rem 1.1rem;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-left: 0.3rem;
+}
+
+.report-filters button:hover {
+  background: #1255a2;
+}
+
+h3 {
+  margin-top: 2rem;
+  color: #1976d2;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 2rem 0;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+th, td {
+  padding: 0.7rem 1rem;
+  text-align: left;
+}
+
+th {
+  background: #f0f4f8;
+  font-weight: 700;
+  color: #333;
+}
+
+tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+ul {
+  margin: 0.7rem 0 2rem 1.5rem;
+  padding: 0;
+}
+
+@media (max-width: 900px) {
+  .report-filters {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  table, th, td {
+    font-size: 0.97rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .report-filters {
+    padding: 0.7rem;
+    font-size: 0.98rem;
+  }
+  table, th, td {
+    font-size: 0.92rem;
+    padding: 0.5rem 0.5rem;
+  }
+  h3 {
+    margin-top: 1.2rem;
+    font-size: 1.1rem;
+  }
+}
+/* In reports.component.css */
+.loading {
+  padding: 1rem;
+  font-style: italic;
+  color: #666;
+}
+
+.report-container {
+  margin-top: 2rem;
+}
+
+.summary-section, .user-productivity, .task-completion {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+th, td {
+  padding: 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}

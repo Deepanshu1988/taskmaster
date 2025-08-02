@@ -3,6 +3,7 @@ const User = require('../models/userModel');
 const Notification = require('../models/notificationModel');
 const emailService = require('../utils/emailService');
 const { sendTaskStatusNotification } = require('../utils/notificationHelper');
+const pool = require('../config/db');  
 const STATUS_TO_PROGRESS = {
   'not_started': 0,
   'in_progress': 33,
@@ -14,8 +15,15 @@ exports.createTask = async (req, res) => {
     const taskData = { ...req.body, created_by: req.user.id };
     const taskId = await Task.create(taskData);
     
-    // Get the full task with all details
+    // Get the full task with all details including comments
     const task = await Task.findById(taskId);
+    
+    if (!task) {
+      return res.status(500).json({
+        success: false,
+        message: 'Task was created but could not be retrieved',
+      });
+    }
     
     // Send notification if task is assigned to someone
     if (taskData.assigned_to) {
@@ -59,7 +67,11 @@ exports.createTask = async (req, res) => {
       }
     }
     
-    res.status(201).json({ id: taskId, ...task });
+    // Return the complete task data including comments
+    res.status(201).json({
+      success: true,
+      data: task
+    });
   } catch (error) {
     console.error('Error creating task:', error);
     res.status(500).json({ 
@@ -127,12 +139,8 @@ exports.getTasks = async (req, res) => {
 exports.getTask = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
-    
     if (!task) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Task not found' 
-      });
+      return res.status(404).json({ success: false, message: 'Task not found' });
     }
 
     // Format the response to include project, assignee, and time tracking data
@@ -163,31 +171,23 @@ exports.getTask = async (req, res) => {
       } : null
     };
 
-    res.json({ 
-      success: true, 
-      data: formattedTask 
-    });
+    res.json({ success: true, data: task });
   } catch (error) {
-    console.error('Error in getTask:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to fetch task',
-      error: error.message 
-    });
+    console.error('Error fetching task:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
 
+// In taskController.js - updateTask function
 exports.updateTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    let updates = { ...req.body };
     
     // Don't allow changing the creator
     delete updates.created_by;
-    console.log('Current user in controller:', req.user);
 
-    
     // Get current task state before update
     const currentTask = await Task.findById(id);
     if (!currentTask) {
@@ -196,79 +196,67 @@ exports.updateTask = async (req, res) => {
         message: 'Task not found' 
       });
     }
-// Store old status for notification
-const oldStatus = currentTask.status;
 
-
-    // Check for assignment changes
-    const assignedToChanged = updates.assigned_to !== undefined && 
-                            updates.assigned_to !== currentTask.assigned_to;
+    // If user is not admin, filter updates to only allow specific fields
+    if (req.user.role !== 'admin') {
+      const allowedFields = ['priority', 'status', 'comments', 'progress'];
+      updates = Object.keys(updates)
+        .filter(key => allowedFields.includes(key))
+        .reduce((obj, key) => {
+          obj[key] = updates[key];
+          return obj;
+        }, {});
+    }
 
     // Update the task
     const affectedRows = await Task.update(id, updates);
     
     if (!affectedRows) {
       return res.status(404).json({ 
-        success: false,
-        message: 'No changes made to task' 
-      });
-    }
-
-    // Get the updated task with all relationships
-    const updatedTask = await Task.findById(id, updates,{new: true});
-
-    if (!updatedTask) {
-      return res.status(404).json({ 
         success: false, 
-        message: 'Task not found' 
+        message: 'Task not found or no changes made' 
       });
     }
-    console.log('Current user in controller:', req.user);
+
+    // Get the updated task
+    const updatedTask = await Task.findById(id);
     
-    // Send notification in the background
-    sendTaskStatusNotification(updatedTask, oldStatus, req.user)
-      .catch(error => {
-        console.error('Error sending notification:', error);
-      });
-    // Handle notifications
-    try {
-      // 1. Handle assignment notifications
-      if (assignedToChanged && updatedTask.assigned_to) {
-        const newAssignee = await User.findById(updates.assigned_to);
-        if (newAssignee) {
-          await emailService.sendNotificationEmail(
-            newAssignee.email,
-            `New Task Assigned: ${updatedTask.title}`,
-            `You have been assigned to the task: ${updatedTask.title}`
+    // Check if status or progress was updated by a regular user
+    if (req.user.role !== 'admin') {
+      const statusChanged = updates.status && updates.status !== currentTask.status;
+      const progressChanged = updates.progress && updates.progress !== currentTask.progress;
+      
+      if (statusChanged || progressChanged) {
+        try {
+          // Send notification in the background
+          await sendTaskStatusNotification(
+            { ...updatedTask, oldProgress: currentTask.progress },
+            currentTask.status,
+            req.user,
+            '',
+            statusChanged,
+            progressChanged
           );
+          console.log('Notification sent for task update');
+        } catch (error) {
+          console.error('Error sending notification:', error);
+          // Don't fail the request if notification fails
         }
       }
-
-      // 2. Handle status change notifications
-      if (updates.status && updates.status !== currentTask.status) {
-        await sendTaskStatusNotification(
-          { ...updatedTask, status: updates.status }, // Updated task with new status
-          currentTask.status, // Old status
-          req.user // Who made the change
-        );
-      }
-    } catch (notificationError) {
-      console.error('Notification error:', notificationError);
-      // Don't fail the request if notifications fail
     }
-
-    res.json({ 
-      success: true, 
+    
+    // Send success response with updated task
+    res.status(200).json({
+      success: true,
       message: 'Task updated successfully',
       data: updatedTask
     });
-
   } catch (error) {
-    console.error('Error updating task:', error);
+    console.error('Error in updateTask:', error);
     res.status(500).json({ 
       success: false,
       message: 'Failed to update task',
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -439,10 +427,7 @@ progress: newProgress
     }
 
     // Get the updated task with all details
-    const updatedTask = await Task.update(taskId, {
-      // ... other updates
-      updatedBy: req.user.id // Make sure to include the user who made the update
-    });
+    const updatedTask = await Task.findById(taskId);
     console.log('Sending notification with task:', JSON.stringify(updatedTask, null, 2));
 console.log('Updater info:', JSON.stringify(req.user, null, 2));
     // Send notifications in the background (don't wait for it to complete)

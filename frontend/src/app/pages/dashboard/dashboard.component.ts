@@ -2,7 +2,7 @@ import { Component, ViewChild, TemplateRef, OnInit } from '@angular/core';
 import { CommonModule, NgClass } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
-import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TaskService } from '../../services/task.service';
 import { AuthService } from '../../services/auth.service';
 import { Task } from '../../models/task.model';
@@ -10,11 +10,30 @@ import { ProjectService } from '../../services/project.service';
 import { Project } from '../../models/project.model';
 import { UserService } from '../../services/user.service';
 import { User } from '../../models/user.model';
-import { catchError, firstValueFrom, of } from 'rxjs';
+import { catchError, EMPTY, filter, firstValueFrom, from, of, Subscription, switchMap, timer } from 'rxjs';
 import { DepartmentManagementComponent } from '../department-management/department-management.component';
 import { ToastrModule } from 'ngx-toastr';
 //import { ToastrService } from 'ngx-toastr';
 import { NotificationSettingsComponent } from '../settings/notification-settings/notification-settings.component';
+
+interface TaskFormValue {
+  title: string;
+  description: string;
+  projectId: string;
+  assigned_to: string;
+  priority: string;
+  status: string;
+  dueDate: string;
+  progress: string;
+  comment: string;
+  attachments?: {
+    id: number;
+    file_name: string;
+    file_type: string;
+    created_at: string;
+  }[];
+}
+
 interface StatCard {
   title: string;
   value: string;
@@ -44,6 +63,8 @@ interface TaskWithProject extends Task {
 })
 export class DashboardComponent implements OnInit {
   toastr: any;
+  newComment: any;
+  taskComments: any;
   openNotificationSettingsModal() {
     const modalRef = this.modalService.open(NotificationSettingsComponent, {
       size: 'lg',
@@ -145,14 +166,14 @@ export class DashboardComponent implements OnInit {
         onClick: () => this.openAddDepartmentModal(),
         adminOnly: true // Only admins can add users
       },
-     {
+     /*{
         icon: 'fas fa-bell',
         title: 'Notification Settings',
         description: 'Manage notification preferences',
         buttonText: 'Notification Settings',
         onClick: () => this.openNotificationSettingsModal(),
         adminOnly: true // Only admins can access notification settings
-      }
+      }*/
     ];
   
     // If user is admin, show all actions, otherwise filter out admin-only actions
@@ -191,6 +212,25 @@ export class DashboardComponent implements OnInit {
   isAdmin: boolean | undefined;
   currentUserId: any;
 
+  // Add these properties for file upload
+  selectedFiles: File[] = [];
+  isUploading = false;
+  uploadProgress = 0;
+  uploadMessage = '';
+  uploadMessageType: 'success' | 'error' | 'info' = 'info';
+  maxFileSize = 10 * 1024 * 1024; // 10MB
+  allowedFileTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'text/plain'
+  ];
+
   constructor(
     private fb: FormBuilder,
     private modalService: NgbModal,
@@ -209,7 +249,8 @@ export class DashboardComponent implements OnInit {
       assigned_to: ['', Validators.required],
       priority: ['medium', Validators.required],
       status: ['pending', Validators.required],
-      dueDate: [null],
+      dueDate: [null, [Validators.required, this.futureDateValidator()]], // Make dueDate required
+      comment: [''],
       progress: [0, [
         Validators.required, 
         Validators.min(0), 
@@ -226,61 +267,47 @@ export class DashboardComponent implements OnInit {
   }
 
    // Add this method to your component class
-   private futureDateValidator(): import('@angular/forms').ValidatorFn {
-    return (control: import('@angular/forms').AbstractControl): {[key: string]: any} | null => {
+    futureDateValidator(): import('@angular/forms').ValidatorFn {
+    return (control: AbstractControl): { [key: string]: any } | null => {
       if (!control.value) {
         return null; // Let required validator handle empty values
       }
       
       const selectedDate = new Date(control.value);
       const today = new Date();
-      today.setHours(0, 0, 0, 0); // Reset time part to ensure date-only comparison
+      today.setHours(0, 0, 0, 0); // Reset time part to compare dates only
       
-      return selectedDate >= today ? null : { 'invalidDate': true };
+      if (selectedDate < today) {
+        return { 'invalidDate': true };
+      }
+      return null;
     };
   }
-
-  // In dashboard.component.ts
   ngOnInit(): void {
     // Set isAdmin based on current user's role
     const currentUser = this.authService.currentUserValue;
-    console.log('Current user in dashboard:', currentUser); // Debug log
+    console.log('Current user in dashboard:', currentUser);
     this.isAdmin = currentUser ? (currentUser.user?.role === 'admin' || currentUser.role === 'admin') : false;
-    console.log('Is admin in dashboard:', this.isAdmin); // Debug log
+    console.log('Is admin in dashboard:', this.isAdmin);
     
-    // Load your data
-    this.loadTasks();
-    this.loadProjects();
-    this.loadUsers();
+    // Load all data when component initializes
+    this.loadAllData().catch(error => {
+      console.error('Error loading dashboard data:', error);
+    });
   }
 
-  async loadTasks() {
+  private async loadAllData(): Promise<void> {
     try {
-      // First, ensure projects are loaded
-      if (this.projects.length === 0) {
-        await this.loadProjects();
-      }
-  
-      // Load tasks
-      const tasks = await firstValueFrom(this.taskService.getTasks());
+      // Load projects and users in parallel
+      await Promise.all([
+        this.loadProjects(),
+        this.loadUsers()
+      ]);
       
-      // Map project to each task
-      this.tasks = tasks.map(task => {
-        const taskWithProject: TaskWithProject = { 
-          ...task,
-          project: this.projects.find(p => p.id === task.project_id?.toString())
-        };
-        return taskWithProject;
-      });
-      
-      // Get most recent 5 tasks
-      this.recentTasks = [...this.tasks]
-        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-        .slice(0, 5);
-      
-      this.updateStats();
+      // Then load tasks which depends on projects
+      await this.loadTasks();
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      console.error('Error loading dashboard data:', error);
     }
   }
   
@@ -416,31 +443,40 @@ async loadProjects() {
   }
 
   createTask() {
-    if (!this.newTask.title) {
-      alert('Please enter a task title');
+    if (this.taskForm.invalid) {
+      this.taskForm.markAllAsTouched();
       return;
     }
 
+    const formValue = this.taskForm.value;
+    console.log('Form values before creating task:', formValue);
+    
     const taskToCreate: Task = {
       ...this.newTask,
-      assigned_to: this.authService.currentUserValue?.id || 0,
+      title: formValue.title,
+      description: formValue.description,
+      status: formValue.status,
+      priority: formValue.priority,
+      progress: formValue.progress,
+      assigned_to: formValue.assigned_to,
+      project_id: formValue.projectId,
+      comments: formValue.comment || null,  // Make sure this is not undefined
       created_at: new Date().toISOString()
     };
 
+    console.log('Task data being sent to backend:', taskToCreate);
+
     this.taskService.createTask(taskToCreate).subscribe(
       (response) => {
+        console.log('Task created successfully:', response);
         this.modalService.dismissAll('success');
-        this.newTask = {
-          id: 0,
-          title: '',
-          description: '',
-          status: 'pending',
+        this.taskForm.reset({
           priority: 'medium',
+          status: 'pending',
           progress: 0,
-          assigned_to: 0,
-          project_id: 0,
-          created_at: new Date().toISOString()
-        };
+          comment: ''  // Reset the comment field
+        });
+        this.loadTasks();
       },
       (error) => {
         console.error('Error creating task:', error);
@@ -535,64 +571,134 @@ async loadProjects() {
     this.router.navigate(['/tasks']);
   }
 
-  async onSubmit() {
-    if (this.taskForm.valid) {
-      try {
-        // Show loading state
-        const submitButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
-        const originalButtonText = submitButton.innerHTML;
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Creating...';
-        
-        const formData = {
-          ...this.taskForm.value,
-          // Ensure project_id and assigned_to are numbers
-          project_id: Number(this.taskForm.value.projectId),
-          assigned_to: Number(this.taskForm.value.assigned_to),
-          // Convert date to ISO string
-          due_date: this.taskForm.value.dueDate ? new Date(this.taskForm.value.dueDate).toISOString() : null,
-          // Ensure progress is a number
-          progress: Number(this.taskForm.value.progress)
-        };
-        
-        // Remove the projectId field as the API expects project_id
-        delete formData.projectId;
-        
-        // Create the task
-        const task = await firstValueFrom(this.taskService.createTask(formData));
-        
-        // Close the modal
-        this.modalService.dismissAll();
-        
-        // Reload tasks
-        await this.loadTasks();
-        
-        // Reset the form
-        this.taskForm.reset({
-          priority: 'medium',
-          status: 'pending',
-          progress: 0
-        });
-        
-      } catch (error) {
-        console.error('Error creating task:', error);
-        alert('Failed to create task. Please try again.');
-      } finally {
-        // Reset button state
-        const submitButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.innerHTML = 'Create Task';
-        }
+  editTask(task: Task) {
+    this.editMode = true;
+    this.selectedTask = task;
+    
+    // Format due date for the form
+    let dueDateValue = '';
+    if (task.due_date) {
+      const date = new Date(task.due_date);
+      if (!isNaN(date.getTime())) {
+        dueDateValue = date.toISOString().split('T')[0];
       }
-    } else {
-      // Mark all fields as touched to show validation messages
-      Object.keys(this.taskForm.controls).forEach(key => {
-        this.taskForm.get(key)?.markAsTouched();
-      });
     }
+
+    this.taskForm.patchValue({
+      title: task.title || '',
+      description: task.description || '',
+      projectId: task.project_id?.toString() || '',
+      assigned_to: task.assigned_to?.toString() || '',
+      priority: task.priority || 'medium',
+      status: task.status || 'pending',
+      dueDate: dueDateValue,
+      progress: task.progress || 0,
+      comment: task.comments || '' // Map backend comments to frontend comment field
+    });
+    // Open the modal
+    this.modalService.open(this.addTaskModal, {
+      size: 'lg',
+      centered: true,
+      backdrop: 'static'
+    });
   }
 
+  async onSubmit() {
+    if (this.taskForm.invalid) {
+      this.taskForm.markAllAsTouched();
+      return;
+    }
+  
+    try {
+      this.taskForm.disable();
+      const formValue = this.taskForm.value;
+      
+      // Format the due date
+      const dueDate = formValue.dueDate ? new Date(formValue.dueDate).toISOString().split('T')[0] : null;
+      
+      // Prepare task data with proper field names for the backend
+      const taskData = {
+        title: formValue.title,
+        description: formValue.description,
+        project_id: formValue.projectId,
+        assigned_to: formValue.assigned_to,
+        priority: formValue.priority,
+        status: formValue.status,
+        progress: formValue.progress || 0,
+        comments: formValue.comment || null,  // Changed from 'comment' to 'comments' to match backend
+        due_date: dueDate 
+      };
+  
+      console.log('Submitting task data:', taskData); // Debug log
+  
+      let taskId: number;
+      
+      // Handle task creation/update
+      if (this.editMode && this.selectedTask) {
+        // Update existing task
+        const updatedTask = await firstValueFrom(this.taskService.updateTask(this.selectedTask.id, taskData));
+        taskId = this.selectedTask.id; // Use existing task ID for file upload
+        this.showUploadMessage('Task updated successfully', 'success');
+      } else {
+        // Create new task
+        const newTask = await firstValueFrom(this.taskService.createTask(taskData));
+        taskId = newTask.id; // Use new task ID for file upload
+        this.showUploadMessage('Task created successfully', 'success');
+      }
+      
+      // Upload files if any (for both create and update)
+      if (this.selectedFiles.length > 0 && taskId) {
+        console.log('Uploading files for task ID:', taskId);
+        await this.uploadFiles(taskId);
+      }
+      
+      // Refresh tasks and close modal
+      this.loadTasks();
+      this.dismissModal();
+    } catch (error) {
+      console.error('Error saving task:', error);
+      this.showUploadMessage('Failed to save task. Please try again.', 'error');
+    } finally {
+      this.taskForm.enable();
+    }
+  }
+  editTaskFromRecent(task: any) {
+    // Load task details including comments
+    this.taskService.getTaskById(task.id).subscribe({
+      next: (taskDetails) => {
+        // Open edit modal with task details
+        this.editTask(taskDetails);
+        
+        // If you have a separate comments array in your task object
+        if (taskDetails.comments) {
+          this.taskComments[task.id] = Array.isArray(taskDetails.comments) 
+            ? taskDetails.comments 
+            : [taskDetails.comments];
+        }
+      },
+      error: (error) => {
+        console.error('Error loading task details:', error);
+      }
+    });
+  }
+  addComment(taskId: number) {
+    if (!this.newComment[taskId]?.trim()) return;
+    
+    this.taskService.addTaskComment(taskId, this.newComment[taskId].trim()).subscribe({
+      next: (response) => {
+        if (response && response.success) {
+          if (!this.taskComments[taskId]) {
+            this.taskComments[taskId] = [];
+          }
+          this.taskComments[taskId].unshift(response.data || response);
+          this.newComment[taskId] = '';
+        }
+      },
+      error: (error) => {
+        console.error('Error adding comment:', error);
+      }
+    });
+  }
   dismissModal() {
     if (this.currentModalRef) {
       this.currentModalRef.dismiss('User dismissed the modal');
@@ -620,5 +726,122 @@ async loadProjects() {
       month: 'short', 
       day: 'numeric' 
     });
+  }
+
+  // Add these methods for file handling
+  onFileSelected(event: any): void {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // Check file size
+      if (file.size > this.maxFileSize) {
+        this.showUploadMessage(`File ${file.name} exceeds maximum size of 10MB`, 'error');
+        continue;
+      }
+      
+      // Check file type
+      if (!this.allowedFileTypes.includes(file.type)) {
+        this.showUploadMessage(`File type not supported: ${file.name}`, 'error');
+        continue;
+      }
+      
+      // Add to selected files if not already added
+      if (!this.selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+        this.selectedFiles.push(file);
+      }
+    }
+    
+    // Reset file input to allow selecting the same file again
+    event.target.value = '';
+  }
+
+  removeSelectedFile(index: number): void {
+    this.selectedFiles.splice(index, 1);
+  }
+
+  async uploadFiles(taskId: number): Promise<void> {
+    if (this.selectedFiles.length === 0) return;
+    
+    this.isUploading = true;
+    this.uploadProgress = 0;
+    
+    try {
+      const formData = new FormData();
+      this.selectedFiles.forEach(file => {
+        formData.append('files', file);
+      });
+      
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        if (this.uploadProgress < 90) {
+          this.uploadProgress += 10;
+        }
+      }, 300);
+      
+      // Call the upload service
+      await firstValueFrom(this.taskService.uploadTaskAttachments(taskId, formData));
+      
+      // Simulate upload completion
+      await new Promise(resolve => setTimeout(resolve, 300));
+      clearInterval(progressInterval);
+      this.uploadProgress = 100;
+      
+      this.showUploadMessage('Files uploaded successfully', 'success');
+      this.selectedFiles = [];
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      this.showUploadMessage('Failed to upload files. Please try again.', 'error');
+    } finally {
+      this.isUploading = false;
+    }
+  }
+
+  private showUploadMessage(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
+    this.uploadMessage = message;
+    this.uploadMessageType = type;
+    
+    // Auto-hide message after 5 seconds
+    if (type !== 'error') {
+      setTimeout(() => {
+        this.uploadMessage = '';
+      }, 5000);
+    }
+  }
+
+  ngOnDestroy(): void {
+    // Clean up any remaining resources if needed
+  }
+
+  async loadTasks() {
+    try {
+      // First, ensure projects are loaded
+      if (this.projects.length === 0) {
+        await this.loadProjects();
+      }
+  
+      // Load tasks
+      const tasks = await firstValueFrom(this.taskService.getTasks());
+      
+      // Map project to each task
+      this.tasks = tasks.map(task => {
+        const taskWithProject: TaskWithProject = { 
+          ...task,
+          project: this.projects.find(p => p.id === task.project_id?.toString())
+        };
+        return taskWithProject;
+      });
+      
+      // Get most recent 5 tasks
+      this.recentTasks = [...this.tasks]
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        .slice(0, 5);
+      
+      this.updateStats();
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    }
   }
 }

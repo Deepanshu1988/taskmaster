@@ -115,7 +115,7 @@ export class NotificationService {
 
   // API Methods
   getUserNotifications(userId: number, params?: any): Observable<{data: Notification[], total: number}> {
-    return this.http.get<{data: Notification[], total: number}>(`${this.apiUrl}/user/${userId}`, { params })
+    return this.http.get<{data: Notification[], total: number}>(`${this.apiUrl}/get/notifications/user/${userId}`, { params })
       .pipe(
         tap(response => {
           this.notifications$.next(response.data);
@@ -129,7 +129,7 @@ export class NotificationService {
   }
 
   markAsRead(notificationId: number): Observable<{success: boolean}> {
-    return this.http.patch<{success: boolean}>(`${this.apiUrl}/${notificationId}/read`, {})
+    return this.http.patch<{success: boolean}>(`${this.apiUrl}/mark-as-read/${notificationId}`, {})
       .pipe(
         tap(() => {
           const notifications = this.notifications$.value.map(n => 
@@ -156,7 +156,7 @@ export class NotificationService {
   }
 
   deleteNotification(notificationId: number): Observable<{success: boolean}> {
-    return this.http.delete<{success: boolean}>(`${this.apiUrl}/${notificationId}`)
+    return this.http.delete<{success: boolean}>(`${this.apiUrl}/delete/notification/${notificationId}`)
       .pipe(
         tap(() => {
           const filtered = this.notifications$.value.filter(n => n.id !== notificationId);

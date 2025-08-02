@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Observable, catchError, of, throwError } from 'rxjs';
 import { User } from '../models/user.model';
 import { map, tap } from 'rxjs/operators';
@@ -19,12 +19,16 @@ export class UserService {
     private authService: AuthService
   ) {}
 
-  // Helper method to get headers with auth token
+  // Helper method to get headers with auth token and cache control
   private getAuthHeaders() {
     const token = localStorage.getItem('token');
     return new HttpHeaders({
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'If-Modified-Since': new Date().toUTCString()
     });
   }
 
@@ -37,8 +41,9 @@ export class UserService {
       return of(null);
     }
   
-    return this.http.get<any>(`${this.apiUrl}/${userId}`, {
-      headers: this.getAuthHeaders()
+    return this.http.get<any>(`${this.apiUrl}/get/user/${userId}`, {
+      headers: this.getAuthHeaders(),
+      params: { t: Date.now().toString() }
     }).pipe(
       map(response => {
         const userData = response.success ? response.data : response;
@@ -97,9 +102,9 @@ export class UserService {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     });
-    console.log('Sending request to:', `${this.apiUrl}/${userId}/preferences`);
+    console.log('Sending request to:', `${this.apiUrl}/update/user/${userId}/preferences`);
     return this.http.put<any>(
-      `${this.apiUrl}/${userId}/preferences`,
+      `${this.apiUrl}/update/user/${userId}/preferences`,
       { notification_preferences: preferences },
       { headers }
     ).pipe(
@@ -127,36 +132,6 @@ export class UserService {
       })
     );
   }
- // Get current user with preferences
- /*getCurrentUser(): Observable<any> {
-  const currentUser = this.authService.currentUserValue;
-  if (!currentUser?.user?.id) {
-    return of(null);
-  }
-
-  return this.http.get<any>(
-    `${this.apiUrl}/users/${currentUser.user.id}`,
-    { headers: this.getAuthHeaders() }
-  ).pipe(
-    map((response: any) => {
-      // Ensure we handle both success: true and direct data responses
-      const userData = response.success ? response.data : response;
-      return {
-        ...userData,
-        notificationPreferences: userData.notificationPreferences || {
-          email: { enabled: true, taskReminders: true, dueDateAlerts: true, statusUpdates: true },
-          in_app: { enabled: true, taskReminders: true, mentions: true, statusUpdates: true },
-          push: { enabled: false, taskReminders: false, mentions: false }
-        }
-      };
-    }),
-    catchError(error => {
-      console.error('Error fetching current user:', error);
-      return of(null);
-    })
-  );
-}*/
-
   
   private getHeaders(): HttpHeaders {
     let token = localStorage.getItem('token');
@@ -205,30 +180,33 @@ export class UserService {
 }
 
 getUsers(): Observable<User[]> {
-  return this.http.get<User[]>(`${this.apiUrl}`, { 
-    headers: this.getHeaders() 
+  return this.http.get<User[]>(`${this.apiUrl}/get/users`, { 
+    headers: this.getAuthHeaders(),
+    params: { t: Date.now().toString() }
   }).pipe(
+    map((response: any) => response.data || response),
     catchError(this.handleError)
   );
 }
 getUsersByRole(role: string): Observable<any[]> {
-  return this.http.get<any[]>(`${this.apiUrl}?role=${role}`, { 
-    headers: this.getHeaders() 
+  return this.http.get<any[]>(`${this.apiUrl}/get/users?role=${role}`, { 
+    headers: this.getAuthHeaders(),
+    params: { t: Date.now().toString() }
   }).pipe(
+    map((response: any) => response.data || response),
     catchError(this.handleError)
   );
 }
-// Add this method to your UserService
-// getCurrentUser(): Observable<User> {
-//   if (!this.userId) {
-//     return throwError(() => new Error('No user ID found in localStorage'));
-//   }
-//   return this.http.get<User>(`${this.apiUrl}/${this.userId}`, { 
-//     headers: this.getHeaders() 
-//   }).pipe(
-//     catchError(this.handleError)
-//   );
-// }
+// user.service.ts
+getUserById(userId: number): Observable<any> {
+  return this.http.get<any>(`${this.apiUrl}/get/user/${userId}`, {
+    headers: this.getAuthHeaders(),
+    params: { t: Date.now().toString() }
+  }).pipe(
+    map(response => response.success ? response.data : response),
+    catchError(this.handleError)
+  );
+}
 
 // In user.service.ts
 updateUser(id: number, userData: Partial<User>): Observable<User> {
@@ -248,7 +226,7 @@ updateUser(id: number, userData: Partial<User>): Observable<User> {
 
   console.log('Sending clean update request:', cleanUserData);
 
-  return this.http.put<User>(`${this.apiUrl}/${id}`, cleanUserData, {
+  return this.http.put<User>(`${this.apiUrl}/update/user/${id}`, cleanUserData, {
     headers: this.getHeaders()
   }).pipe(
     catchError(error => {
@@ -263,7 +241,7 @@ updateUser(id: number, userData: Partial<User>): Observable<User> {
     const headers = this.getHeaders();
     console.log('Request headers:', headers); // Debug log
     
-    return this.http.post<any>(this.apiUrl, userData, { 
+    return this.http.post<any>(`${this.apiUrl}/create/user`, userData, { 
       headers: headers 
     }).pipe(
       tap((response: any) => console.log('User created:', response)),
@@ -279,13 +257,9 @@ updateUser(id: number, userData: Partial<User>): Observable<User> {
     );
   }
   deleteUser(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`, { headers: this.getHeaders() })
+    return this.http.delete<void>(`${this.apiUrl}/delete/user/${id}`, { headers: this.getHeaders() })
       .pipe(
         catchError(this.handleError)
       );
   }
 }
-
-//function tap(arg0: (response: any) => void): import("rxjs").OperatorFunction<any, any> {
-//  throw new Error('Function not implemented.');
-//}

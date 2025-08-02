@@ -32,6 +32,10 @@ import { TasksModule } from './pages/tasks/tasks.module';
 import { SettingsModule } from './pages/settings/settings.module';
 import { NotificationsModule } from './pages/notifications/notifications.module';
 import { DepartmentManagementComponent } from './pages/department-management/department-management.component';
+//import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+//import { DurationPipe } from './pipes/duration.pipe';
+//import { ReportsComponent } from './pages/reports/reports.component';
+import { CacheInterceptor } from './interceptors/cache.interceptor';
 @NgModule({
   declarations: [
     AppComponent,
@@ -41,7 +45,10 @@ import { DepartmentManagementComponent } from './pages/department-management/dep
     DashboardComponent,
     TruncatePipe,
     TaskListComponent,
-    DepartmentManagementComponent
+    DepartmentManagementComponent,
+    FormsModule,
+    ReactiveFormsModule,
+    
   ],
   imports: [
     BrowserModule,
@@ -60,10 +67,12 @@ import { DepartmentManagementComponent } from './pages/department-management/dep
     TasksModule,
     SettingsModule,
     NotificationsModule,
+    
     //MatSnackBarModule
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
+    { provide: HTTP_INTERCEPTORS, useClass: CacheInterceptor, multi: true },
     AuthService,
     AuthGuard,
     AdminGuard,

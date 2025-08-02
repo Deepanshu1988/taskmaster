@@ -21,3 +21,50 @@
     font-weight: bold;
     font-size: 1.5rem;
   }
+  
+  /* Mobile menu close button styles */
+  .btn-close {
+    padding: 0.5rem;
+    opacity: 1;
+    background-size: 0.8em;
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  .btn-close:hover {
+    opacity: 0.8;
+  }
+
+  /* Ensure proper spacing for the toggle buttons */
+  .navbar-toggler,
+  .btn-close {
+    margin-left: 0.5rem;
+  }
+
+  /* Make sure the menu is properly positioned on mobile */
+  .navbar-collapse {
+    transition: all 0.3s ease-in-out;
+  }
+
+  /* Improve touch targets for mobile */
+  .nav-link {
+    padding: 0.5rem 1rem;
+  }
+
+  /* Ensure the menu stays visible when open on mobile */
+  @media (max-width: 991.98px) {
+    .navbar-collapse {
+      position: fixed;
+      top: 56px; /* Adjust based on your header height */
+      left: 0;
+      right: 0;
+      padding: 1rem;
+      background-color: #0d6efd; /* Match your navbar color */
+      z-index: 1000;
+      max-height: calc(100vh - 56px);
+      overflow-y: auto;
+    }
+    
+    .navbar-nav {
+      margin-top: 0.5rem;
+    }
+  }

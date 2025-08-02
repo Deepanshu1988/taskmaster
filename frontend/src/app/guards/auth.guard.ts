@@ -10,6 +10,11 @@ export class AuthGuard implements CanActivate {
   constructor(private authService: AuthService, private router: Router) {}
 
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
+    // Check if route has noAuth flag set to true
+    if (route.data['noAuth']) {
+      return true;
+    }
+
     const currentUser = this.authService.currentUserValue;
     
     if (currentUser && currentUser.token) {

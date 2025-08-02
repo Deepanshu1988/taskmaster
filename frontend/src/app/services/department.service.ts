@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environments';
@@ -60,17 +60,47 @@ export class DepartmentService {
     console.error(`[${method} Error] ${url}:`, error);
   }
 
+  private getHeaders() {
+    const token = localStorage.getItem('token');
+    return new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'If-Modified-Since': new Date().toUTCString()
+    });
+  }
+
+  private getRequestOptions(params: any = {}) {
+    // Add timestamp to prevent caching
+    const cacheBuster = { t: Date.now().toString() };
+    const allParams = { ...params, ...cacheBuster };
+    
+    return {
+      headers: this.getHeaders(),
+      params: new HttpParams({
+        fromObject: allParams
+      })
+    };
+  }
+
   getDepartments(): Observable<{ success: boolean; data: Department[] }> {
-    this.logRequest('GET', this.apiUrl);
-    return this.http.get<{ success: boolean; data: Department[] }>(this.apiUrl).pipe(
+    const getUrl = `${this.apiUrl}/get/departments`;
+    this.logRequest('GET', getUrl);
+    
+    return this.http.get<{ success: boolean; data: Department[] }>(
+      getUrl,
+      this.getRequestOptions()
+    ).pipe(
       tap({
         next: (response) => {
-          this.logResponse('GET', this.apiUrl, response);
+          this.logResponse('GET', getUrl, response);
           if (response.success && response.data) {
             this.departmentsSubject.next(response.data);
           }
         },
-        error: (error) => this.logError('GET', this.apiUrl, error)
+        error: (error) => this.logError('GET', getUrl, error)
       }),
       catchError(this.handleError)
     );
@@ -90,25 +120,26 @@ export class DepartmentService {
   }
 
   createDepartment(departmentData: any): Observable<any> {
-    this.logRequest('POST', this.apiUrl, departmentData);
-    return this.http.post(this.apiUrl, departmentData).pipe(
+    const url = `${this.apiUrl}/post/departments`;
+    this.logRequest('POST', url, departmentData);
+    return this.http.post(url, departmentData, this.getRequestOptions()).pipe(
       tap({
         next: (response) => {
-          this.logResponse('POST', this.apiUrl, response);
+          this.logResponse('POST', url, response);
           this.getDepartments().subscribe();
         },
-        error: (error) => this.logError('POST', this.apiUrl, error)
+        error: (error) => this.logError('POST', url, error)
       }),
       catchError(this.handleError)
     );
   }
 
   updateDepartment(id: number, name: string, description: string = ''): Observable<Department> {
-    const url = `${this.apiUrl}/${id}`;
+    const url = `${this.apiUrl}/put/departments/${id}`;
     const body = { name, description };
     this.logRequest('PUT', url, body);
     
-    return this.http.put<{success: boolean; data: Department}>(url, body).pipe(
+    return this.http.put<{success: boolean; data: Department}>(url, body, this.getRequestOptions()).pipe(
       tap({
         next: (response) => {
           this.logResponse('PUT', url, response);
@@ -130,10 +161,10 @@ export class DepartmentService {
   }
 
   deleteDepartment(id: number): Observable<boolean> {
-    const url = `${this.apiUrl}/${id}`;
+    const url = `${this.apiUrl}/delete/departments/${id}`;
     this.logRequest('DELETE', url);
     
-    return this.http.delete<{success: boolean; message?: string}>(url).pipe(
+    return this.http.delete<{success: boolean; message?: string}>(url, this.getRequestOptions()).pipe(
       tap({
         next: (response) => {
           this.logResponse('DELETE', url, response);

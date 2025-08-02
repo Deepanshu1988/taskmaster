@@ -1,9 +1,12 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable, catchError, throwError, tap, map, of } from 'rxjs';
+import { HttpClient, HttpErrorResponse, HttpEvent, HttpEventType, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Observable, catchError, throwError, tap, map, of, filter } from 'rxjs';
 import { Task } from '../models/task.model';
+import { TaskAttachment } from './attachment.service';
 
 export interface TaskComment {
+  data(data: any): unknown;
+  success: any;
   id: number;
   task_id: number;
   user_id: number;
@@ -30,14 +33,57 @@ export interface ApiResponse<T> {
   providedIn: 'root'
 })
 export class TaskService {
+  uploadTaskAttachments(taskId: number, formData: FormData): Observable<any> {
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+      // Don't set Content-Type here - let the browser set it with the correct boundary
+    });
+  
+    return this.http.post<{success: boolean, message: string, data: any}>(
+      `${this.apiUrl}/get/task/${taskId}/attachments`,  // Make sure this matches your backend route
+      formData,
+      { headers }
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        console.error('Upload error:', {
+          status: error.status,
+          message: error.message,
+          error: error.error
+        });
+        return throwError(() => new Error('Failed to upload files'));
+      })
+    );
+  }
+  deleteAttachment(attachmentId: number) {
+    throw new Error('Method not implemented.');
+  }
+  getTaskAttachments(taskId: number): Observable<TaskAttachment[]> {
+    return this.http.get<{ success: boolean; data: TaskAttachment[] }>(
+      `${this.apiUrl}/get/task/${taskId}/attachments`
+    ).pipe(
+      map(response => response.data || [])
+    );
+  }
+  downloadFile(attachmentId: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/get/task-attachments/${attachmentId}/download`, {
+      responseType: 'blob'
+    }).pipe(
+      catchError(this.handleError)
+    );
+  }
+  notifyTaskUpdate(arg0: { taskId: number; updatedBy: any; updates: { title: any; description: any; project_id: any; assigned_to: any; priority: any; status: any; due_date: string | null; progress: number; comments: any; }; comment: any; }): Observable<unknown> {
+    throw new Error('Method not implemented.');
+  }
   getTaskById(taskId: number): Observable<any> {
-    return this.http.get(`${this.apiUrl}/tasks/${taskId}`).pipe(
+    return this.http.get(`${this.apiUrl}/get/task/${taskId}`).pipe(
       map((response: any) => {
         if (response.success && response.data) {
           return {
             ...response.data,
             total_time: response.data.total_time || 0,
-            last_time_tracked: response.data.last_time_tracked || null
+            last_time_tracked: response.data.last_time_tracked || null,
+            comments: response.data.comments || []  // Ensure comments are included
           };
         }
         return response;
@@ -46,11 +92,20 @@ export class TaskService {
   }
   authService: any;
   getTaskCounts(): Observable<{pending: number, in_progress: number, completed: number}> {
+    const headers = this.getHeaders()
+      .set('Cache-Control', 'no-cache, no-store, must-revalidate')
+      .set('Pragma', 'no-cache')
+      .set('Expires', '0')
+      .set('If-Modified-Since', new Date().toUTCString());
+
     return this.http.get<{success: boolean, data: {pending: number, in_progress: number, completed: number}}>(
-      `${this.apiUrl}/counts`,
-      { headers: this.getHeaders() }
+      `${this.apiUrl}/get/counts`,
+      { 
+        headers: headers,
+        params: new HttpParams().set('t', Date.now().toString()) // Add timestamp to prevent caching
+      }
     ).pipe(
-      map(response => response.data || { pending: 0, in_progress: 0, completed: 0 }),
+      map(response => response?.data || { pending: 0, in_progress: 0, completed: 0 }),
       catchError(error => {
         console.error('Error fetching task counts:', error);
         return of({ pending: 0, in_progress: 0, completed: 0 });
@@ -60,7 +115,7 @@ export class TaskService {
 
   getTasksByUser(userId: any): Observable<any[]> {
     return this.http.get<ApiResponse<any[]>>(
-      `${this.apiUrl}/user/${userId}`,
+      `${this.apiUrl}/get/tasks/user/${userId}`,
       { headers: this.getHeaders() }
     ).pipe(
       map(response => response.data || []),
@@ -123,63 +178,58 @@ export class TaskService {
     );
   }
 
-  // Task Operations
-  // In task.service.ts
-getTasks(): Observable<Task[]> {
-  return this.http.get<ApiResponse<Task[]>>(`${this.apiUrl}`, {
-    headers: this.getHeaders()
-  }).pipe(
-    tap(response => console.log('Raw API response:', response)),
-    map(response => {
-      if (response.success && Array.isArray(response.data)) {
-        return response.data.map(task => {
-          // Ensure progress is properly handled
-          const progress = task.progress !== undefined ? task.progress : task.Progress;
+  getTasks(): Observable<Task[]> {
+    const headers = this.getHeaders().set('Cache-Control', 'no-cache, no-store, must-revalidate')
+      .set('Pragma', 'no-cache')
+      .set('Expires', '0')
+      .set('If-Modified-Since', new Date().toUTCString());
+      
+    return this.http.get<ApiResponse<Task[]>>(`${this.apiUrl}/get/tasks`, {
+      headers: headers,
+      params: new HttpParams().set('t', Date.now().toString()) // Add timestamp to prevent caching
+    }).pipe(
+      tap(response => console.log('Raw tasks API response:', response)),
+      map(response => {
+        let tasks: any[] = [];
+        
+        // Handle both response formats
+        if (response && response.success !== undefined) {
+          tasks = response.data || [];
+        } else {
+          tasks = response as unknown as Task[];
+        }
+
+        // Process each task to ensure consistent data structure
+        return tasks.map(task => {
+          // Check if assignee is set but has name "Unassigned"
+          const hasValidAssignee = task.assignee && 
+                                 task.assignee.name && 
+                                 task.assignee.name.toLowerCase() !== 'unassigned';
+
+          // Extract assignee name
+          const assigneeName = hasValidAssignee 
+            ? task.assignee.name 
+            : (task.assigned_to_name && task.assigned_to_name.toLowerCase() !== 'unassigned' 
+                ? task.assigned_to_name 
+                : 'Unassigned');
+
           return {
             ...task,
-            progress: progress !== undefined ? Number(progress) : 0,
-            project: task['project'] || null,
-            assignee: task['assignee'] || null,
-            total_time: task['total_time'] || 0,
-            last_time_tracked: task['last_time_tracked'] || null
+            project_name: task.project?.name || task.project_name || 'No Project',
+            project: task.project || { name: 'No Project' },
+            assigned_to_name: assigneeName,
+            assignee: hasValidAssignee ? task.assignee : null,
+            comments: task.comments || ''
+            
           };
         });
-      }
-      return [];
-    }),
-    tap(tasks => console.log('Processed tasks:', tasks))
-  );
-}
-
-  // In task.service.ts
-/*getTask(): Observable<any> {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    return throwError('No authentication token found');
+      }),
+      tap(tasks => console.log('Processed tasks with projects and assignees:', tasks)),
+      catchError(this.handleError)
+    );
   }
 
-  return this.http.get<any>(`${this.apiUrl}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    }
-  }).pipe(
-    map(response => {
-      // Additional filtering in the frontend if needed
-      if (response.data && Array.isArray(response.data)) {
-        response.data = response.data.filter(task => 
-          task.assignee_role === 'admin' || task.creator_role === 'admin'
-        );
-      }
-      return response;
-    }),
-    catchError(error => {
-      console.error('Error in getTasks:', error);
-      return throwError(error);
-    })
-  );
-}*/
-getTasksByUserRole(): Observable<Task[]> {
+  getTasksByUserRole(): Observable<Task[]> {
   const currentUser = this.authService.currentUserValue;
   const isAdmin = currentUser ? (currentUser.user?.role === 'admin' || currentUser.role === 'admin') : false;
   
@@ -187,7 +237,7 @@ getTasksByUserRole(): Observable<Task[]> {
     return this.getTasks();
   } else {
     const userId = currentUser?.id;
-    return this.http.get<Task[]>(`${this.apiUrl}/user/${userId}`);
+    return this.http.get<Task[]>(`${this.apiUrl}/get/tasks/user/${userId}`);
   }
 }
 getTask(): Observable<ApiResponse<Task[]>> {
@@ -196,18 +246,27 @@ getTask(): Observable<ApiResponse<Task[]>> {
     return throwError(() => new Error('No authentication token found'));
   }
 
-  return this.http.get<ApiResponse<Task[]>>(`${this.apiUrl}`, {
+  return this.http.get<ApiResponse<Task[]>>(`${this.apiUrl}/get/tasks`, {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     }
   }).pipe(
     map(response => {
-      // Additional filtering in the frontend if needed
       if (response.data && Array.isArray(response.data)) {
-        response.data = response.data.filter(task => 
-          task['assignee_role'] === 'admin' || task['creator_role'] === 'admin'
-        );
+        // Map over tasks and ensure comments field exists
+        response.data = response.data.map(task => ({
+          ...task,
+          comments: task.comments || ''  // Ensure comments field exists
+        }));
+
+        // Admin-specific filtering
+        const currentUser = this.authService.currentUserValue;
+        if (currentUser?.role !== 'admin') {
+          response.data = response.data.filter(task => 
+            task['assignee_role'] === 'admin' || task['creator_role'] === 'admin'
+          );
+        }
       }
       return response;
     }),
@@ -223,7 +282,7 @@ getTask(): Observable<ApiResponse<Task[]>> {
     this.cache.clear();
     
     return this.http.post<Task>(
-      this.apiUrl, 
+      `${this.apiUrl}/create/task`, 
       task, 
       { headers: this.getHeaders() }
     ).pipe(
@@ -237,8 +296,8 @@ getTask(): Observable<ApiResponse<Task[]>> {
       updates.progress = Math.min(100, Math.max(0, Number(updates.progress) || 0));
     }
     
-    return this.http.patch<Task>(
-      `${this.apiUrl}/${id}`,
+    return this.http.put<Task>(
+      `${this.apiUrl}/update/task/${id}`,
       updates,
       { headers: this.getHeaders() }
     ).pipe(
@@ -246,48 +305,93 @@ getTask(): Observable<ApiResponse<Task[]>> {
     );
   }
 
-  // In task.service.ts
-deleteTask(taskId: number): Observable<any> {
-  // Invalidate caches
-  this.cache.delete(`task_${taskId}`);
-  this.cache.clear(); // Clear all task caches since the list will change
+  deleteTask(taskId: number): Observable<any> {
+    // Invalidate caches
+    this.cache.delete(`task_${taskId}`);
+    this.cache.clear(); // Clear all task caches since the list will change
 
-  return this.http.delete(
-    `${this.apiUrl}/${taskId}`,
-    { 
-      headers: this.getHeaders(),
-      withCredentials: true
-    }
-  ).pipe(
-    catchError(this.handleError)
-  );
-}
-  // Task Status Operations
+    return this.http.delete(
+      `${this.apiUrl}/delete/task/${taskId}`,
+      { 
+        headers: this.getHeaders(),
+        withCredentials: true
+      }
+    ).pipe(
+      catchError(this.handleError)
+    );
+  }
+
   updateTaskStatus(taskId: number, status: string): Observable<ApiResponse<any>> {
     return this.http.patch<ApiResponse<any>>(
-      `${this.apiUrl}/${taskId}/status`,
+      `${this.apiUrl}/update/task/${taskId}/status`,
       { status },
       { headers: this.getHeaders() }
     ).pipe(catchError(this.handleError));
   }
 
-  // Task Comments
   getTaskComments(taskId: number): Observable<TaskComment[]> {
+    return this.http.get<{success: boolean, data: TaskComment[]}>(
+      `${this.apiUrl}/get/task/${taskId}/comments`,
+      { headers: this.getHeaders() }
+    ).pipe(
+      map(response => response.success ? response.data : []),
+      catchError(error => {
+        console.error('Error fetching comments:', error);
+        return of([]);
+      })
+    );
+  } 
+
+  addTaskComment(taskId: number, comment: string): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/create/task/${taskId}/comments`,
+      { comment },
+      { headers: this.getHeaders() }
+    ).pipe(
+      catchError(error => {
+        console.error('Error in addTaskComment:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  updateComment(commentId: number, comment: string): Observable<TaskComment> {
+    return this.http.put<ApiResponse<TaskComment>>(
+      `${this.apiUrl}/update/comments/${commentId}`,
+      { comment },
+      { headers: this.getHeaders() }
+    ).pipe(
+      map(response => response.data!),
+      catchError(this.handleError)
+    );
+  }
+
+  deleteComment(commentId: number): Observable<boolean> {
+    return this.http.delete<ApiResponse<boolean>>(
+      `${this.apiUrl}/delete/comments/${commentId}`,
+      { headers: this.getHeaders() }
+    ).pipe(
+      map(response => response.success || false),
+      catchError(this.handleError)
+    );
+  }
+
+  getTaskCommentsOld(taskId: number): Observable<TaskComment[]> {
     const cacheKey = `task_${taskId}_comments`;
     return this.getWithCache<TaskComment[]>(
-      `${this.apiUrl}/${taskId}/comments`,
+      `${this.apiUrl}/get/task/${taskId}/comments`,
       cacheKey
     );
   }
 
   addComment(taskId: number, comment: { content: string }): Observable<ApiResponse<any>> {
     return this.http.post<ApiResponse<any>>(
-      `${this.apiUrl}/${taskId}/comments`,
-      comment,
+      `${this.apiUrl}/create/task/${taskId}/comments`,
+      {comment},
       { headers: this.getHeaders() }
     ).pipe(catchError(this.handleError));
   }
-  // User-specific Tasks
+
   getMyTasks(params?: {
     status?: TaskStatus;
     priority?: TaskPriority;
@@ -304,7 +408,7 @@ deleteTask(taskId: number): Observable<any> {
     }
 
     return this.http.get<any>(
-      `${this.apiUrl}/my-tasks`,
+      `${this.apiUrl}/get/my-tasks`,
       { 
         params: httpParams,
         headers: this.getHeaders() 
@@ -314,8 +418,35 @@ deleteTask(taskId: number): Observable<any> {
     );
   }
 
-  // Helper Methods
   clearCache(): void {
     this.cache.clear();
+  }
+
+  uploadTaskAttachment(taskId: number, formData: FormData): Observable<HttpEvent<any>> {
+    return this.http.post(
+      `${this.apiUrl}/get/task/${taskId}/attachments`,
+      formData,
+      {
+        reportProgress: true,
+        observe: 'events'
+      }
+    ).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  deleteTaskAttachment(attachmentId: number): Observable<ApiResponse<null>> {
+    return this.http.delete<ApiResponse<null>>(`${this.apiUrl}/delete/task-attachments/${attachmentId}`)
+      .pipe(
+        catchError(this.handleError)
+      );
+  }
+
+  private getFileUploadHeaders() {
+    const token = localStorage.getItem('token');
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+      // Don't set Content-Type here - let the browser set it with the correct boundary
+    });
   }
 }

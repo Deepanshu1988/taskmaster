@@ -5,5 +5,7 @@ export interface Project {
   status?: string;
   startDate?: Date;
   endDate?: Date;
+  comments?: string;
+  progress?: number;
   // Add other project-related properties as needed
 }

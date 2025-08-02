@@ -1,0 +1,126 @@
+<div class="report-filters">
+  <label>
+    User:
+    <select [(ngModel)]="filters.userId">
+      <option value="">All</option>
+      <option *ngFor="let user of users" [value]="user.id">{{ user.username }}</option>
+    </select>
+  </label>
+  <label>
+    Project:
+    <select [(ngModel)]="filters.projectId">
+      <option value="">All</option>
+      <option *ngFor="let project of projects" [value]="project.id">{{ project.name }}</option>
+    </select>
+  </label>
+  <label>
+    Department:
+    <select [(ngModel)]="filters.departmentId">
+      <option value="">All</option>
+      <option *ngFor="let dept of departments" [value]="dept.id">{{ dept.name }}</option>
+    </select>
+  </label>
+  <label>
+    Date Range:
+    <input type="date" [(ngModel)]="filters.startDate">
+    -
+    <input type="date" [(ngModel)]="filters.endDate">
+  </label>
+  <button (click)="loadReports()">Apply Filters</button>
+  <button (click)="export('csv')">Export CSV</button>
+  <button (click)="export('pdf')">Export PDF</button>
+</div>
+
+<!-- Time Spent Table -->
+<div *ngIf="timeReport?.length">
+  <h3>Time Spent per Task/User/Project/Department</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Task</th>
+        <th>User</th>
+        <th>Project</th>
+        <th>Department</th>
+        <th>Duration</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let entry of timeReport">
+        <td>{{ entry.taskName }}</td>
+        <td>{{ entry.userName }}</td>
+        <td>{{ entry.projectName }}</td>
+        <td>{{ entry.departmentName }}</td>
+        <td>{{ entry.duration | duration }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<!-- User Productivity Table (add here) -->
+<div *ngIf="userProductivity?.length">
+  <h3>User Productivity</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>User Name</th>
+        <th>Tasks Completed</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let user of userProductivity">
+        <td>{{ user.name }}</td>
+        <td>{{ user.tasksCompleted }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<!-- Task Completion Statistics -->
+<div *ngIf="taskCompletion">
+  <h3>Task Completion Statistics</h3>
+  <p>Tasks Completed: {{ taskCompletion.count }}</p>
+  <ul>
+    <li *ngFor="let stat of taskCompletion.stats">
+      {{ stat.label }}: {{ stat.value }}
+    </li>
+  </ul>
+</div>
+<div *ngIf="reportData">
+  <div>Total Tasks: {{ reportData.taskSummary.totalTasks }}</div>
+  <div>Completed Tasks: {{ reportData.taskSummary.completedTasks }}</div>
+  <table>
+    <tr *ngFor="let user of reportData.userProductivity">
+      <td>{{ user.name }}</td>
+      <td>{{ user.tasksCompleted }}</td>
+    </tr>
+  </table>
+</div>
+<!-- In reports.component.html -->
+<div *ngIf="loading">Loading report data...</div>
+
+<div *ngIf="reportData">
+  <div class="summary-section">
+    <h3>Task Summary</h3>
+    <p>Total Tasks: {{ reportData.taskSummary.totalTasks }}</p>
+    <p>Completed Tasks: {{ reportData.taskSummary.completedTasks }}</p>
+    <p>Completion Rate: {{ reportData.taskSummary.completionRate | number:'1.0-2' }}%</p>
+  </div>
+
+  <div *ngIf="reportData.userProductivity?.length" class="user-productivity">
+    <h3>User Productivity</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>User Name</th>
+          <th>Tasks Completed</th>
+          <th>Email</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of reportData.userProductivity">
+          <td>{{ user.name }}</td>
+          <td>{{ user.tasksCompleted }}</td>
+          <td>{{ user.email }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

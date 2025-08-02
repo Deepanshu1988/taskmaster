@@ -66,7 +66,8 @@ export class UsersComponent implements OnInit {
     this.isLoadingDepartments = true;
     this.departmentService.getDepartments().subscribe({
       next: (response) => {
-        console.log('Departments API Response:', response);
+        // this.departments = response.data;
+        // console.log('Departments API Response:', response);
         
         // Handle both response formats: direct array or {success, data} format
         if (Array.isArray(response)) {
@@ -80,6 +81,8 @@ export class UsersComponent implements OnInit {
         
         console.log('Departments loaded:', this.departments);
         this.isLoadingDepartments = false;
+
+        this.updateUsersWithDepartmentNames();
       },
       error: (error) => {
         console.error('Error loading departments:', error);
@@ -88,7 +91,26 @@ export class UsersComponent implements OnInit {
       }
     });
   }
-
+  private updateUsersWithDepartmentNames(): void {
+    if (!this.users || this.users.length === 0) return;
+    
+    this.users = this.users.map(user => {
+      const userDepartment = this.departments.find(dept => 
+        dept.id === user.department || 
+        dept.id === Number(user.department) ||
+        (typeof user.department_name === 'string' && dept.name === user.department_name) ||
+        (typeof user.department_name === 'number' && dept.id === user.department_name)
+      );
+      
+      return {
+        ...user,
+        department: userDepartment ? userDepartment.name : user.department_name || 'No Department',
+        department_name: userDepartment ? userDepartment.name : undefined
+      };
+    });
+    
+    this.filteredUsers = [...this.users];
+  }
   private initForm(): void {
     this.userForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],

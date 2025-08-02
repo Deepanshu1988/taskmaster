@@ -1,0 +1,42 @@
+/* Style for the close icon */
+.close-icon {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    color: white;
+    font-size: 24px;
+    line-height: 24px;
+    text-align: center;
+}
+
+/* Ensure the toggle button has proper spacing */
+.navbar-toggler {
+    padding: 0.25rem 0.5rem;
+    border: none;
+}
+
+/* Remove the default focus outline and add a custom one */
+.navbar-toggler:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+}
+
+/* Smooth transition for the menu */
+.navbar-collapse {
+    transition: all 0.3s ease;
+}
+
+/* Make sure the menu is properly aligned on mobile */
+@media (max-width: 991.98px) {
+    .navbar-collapse {
+        position: fixed;
+        top: 56px; /* Adjust based on your navbar height */
+        left: 0;
+        right: 0;
+        padding: 1rem;
+        background-color: #0d6efd; /* Match your navbar color */
+        z-index: 1000;
+        max-height: calc(100vh - 56px);
+        overflow-y: auto;
+    }
+}

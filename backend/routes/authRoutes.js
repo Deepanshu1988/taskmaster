@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const logger = require('../utils/logger');
 
 // Trim any whitespace from the URL path
 router.use((req, res, next) => {
@@ -8,15 +9,71 @@ router.use((req, res, next) => {
   next();
 });
 
-// Routes
-router.post('/signup', authController.signup);
-router.post('/login', authController.login);
-router.post('/forgot-password', (req, res) => authController.forgotPassword(req, res));
-router.post('/reset-password', (req, res) => authController.resetPassword(req, res));
-router.post('/update-password', (req, res) => {
-  // Handle update password if needed
-  res.status(200).json({ message: 'Password update endpoint' });
+// Routes with logging
+router.post('/signup', async (req, res) => {
+  const start = Date.now();
+  try {
+    await authController.signup(req, res);
+    logger.logRequest(req, res, Date.now() - start);
+  } catch (error) {
+    logger.logRequest(req, res, Date.now() - start);
+    throw error;
+  }
 });
-router.post('/create-test-user', (req, res) => authController.createTestUser(req, res));
+
+router.post('/login', async (req, res) => {
+  const start = Date.now();
+  try {
+    await authController.login(req, res);
+    logger.logRequest(req, res, Date.now() - start);
+  } catch (error) {
+    logger.logRequest(req, res, Date.now() - start);
+    throw error;
+  }
+});
+
+router.post('/forgot-password', async (req, res) => {
+  const start = Date.now();
+  try {
+    await authController.forgotPassword(req, res);
+    logger.logRequest(req, res, Date.now() - start);
+  } catch (error) {
+    logger.logRequest(req, res, Date.now() - start);
+    throw error;
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  const start = Date.now();
+  try {
+    await authController.resetPassword(req, res);
+    logger.logRequest(req, res, Date.now() - start);
+  } catch (error) {
+    logger.logRequest(req, res, Date.now() - start);
+    throw error;
+  }
+});
+
+router.post('/update-password', async (req, res) => {
+  const start = Date.now();
+  try {
+    res.status(200).json({ message: 'Password update endpoint' });
+    logger.logRequest(req, res, Date.now() - start);
+  } catch (error) {
+    logger.logRequest(req, res, Date.now() - start);
+    throw error;
+  }
+});
+
+router.post('/create-test-user', async (req, res) => {
+  const start = Date.now();
+  try {
+    await authController.createTestUser(req, res);
+    logger.logRequest(req, res, Date.now() - start);
+  } catch (error) {
+    logger.logRequest(req, res, Date.now() - start);
+    throw error;
+  }
+});
 
 module.exports = router;

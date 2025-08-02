@@ -59,12 +59,15 @@ async function testTransporter() {
 }
 
 // Send notification email
+// In emailService.js, update the sendNotificationEmail function
 exports.sendNotificationEmail = async (to, subject, text) => {
   const transporter = getTransporter();
   
   console.log('\n--- Sending Notification Email ---');
+  console.log('Using email service:', process.env.GMAIL_EMAIL);
   console.log('To:', to);
   console.log('Subject:', subject);
+  console.log('Text:', text);
   
   try {
     const mailOptions = {
@@ -96,6 +99,7 @@ exports.sendNotificationEmail = async (to, subject, text) => {
       error: error.message,
       code: error.code,
       command: error.command,
+      response: error.response,
       stack: error.stack
     });
     throw error;

@@ -3,7 +3,16 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const PORT = 3000;
-
+const Task = require('./taskModel');
+const User = require('./userModel');
+const Project = require('./projectModel');
+const Department = require('./departmentModel');
+module.exports = {
+  Task,
+  User,
+  Project,
+  Department,
+};
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const taskRoutes = require('./routes/taskRoutes');
@@ -12,7 +21,7 @@ const projectRoutes = require('./routes/projectRoutes');
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:4200', // Update this with your frontend URL
+  origin: 'http://localhost:3000', // Update this with your frontend URL
   credentials: true
 }));
 app.use(express.json());

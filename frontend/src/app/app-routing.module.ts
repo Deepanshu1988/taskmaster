@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from './guards/auth.guard';
+import { ResetPasswordComponent } from './pages/auth/reset-password/reset-password.component';
 
 const routes: Routes = [
   {
@@ -37,6 +38,7 @@ const routes: Routes = [
     canActivate: [AuthGuard],
     loadChildren: () => import('./pages/notifications/notifications.module').then(m => m.NotificationsModule)
   },
+  { path: 'reports', loadChildren: () => import('./pages/reports/reports.module').then(m => m.ReportsModule) },
   {
     path: '**',
     redirectTo: '/dashboard'
